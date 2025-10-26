@@ -76,7 +76,7 @@ defmodule ExUtcp.MixProject do
 
   defp package do
     [
-      maintainers: ["Thanps Vassilakis"],
+      maintainers: ["Thanos Vassilakis"],
       licenses: ["MPL-2.0"],
       links: %{
         "GitHub" => "https://github.com/thanos/ex_utcp",
