@@ -15,27 +15,27 @@ defmodule ExUtcp.Search do
   alias ExUtcp.Types
 
   @type search_options :: %{
-    algorithm: :exact | :fuzzy | :semantic | :combined,
-    filters: %{
-      providers: [String.t()],
-      transports: [atom()],
-      tags: [String.t()]
-    },
-    limit: integer(),
-    threshold: float(),
-    include_descriptions: boolean(),
-    use_haystack: boolean(),
-    security_scan: boolean(),
-    filter_sensitive: boolean()
-  }
+          algorithm: :exact | :fuzzy | :semantic | :combined,
+          filters: %{
+            providers: [String.t()],
+            transports: [atom()],
+            tags: [String.t()]
+          },
+          limit: integer(),
+          threshold: float(),
+          include_descriptions: boolean(),
+          use_haystack: boolean(),
+          security_scan: boolean(),
+          filter_sensitive: boolean()
+        }
 
   @type search_result :: %{
-    tool: Types.tool(),
-    score: float(),
-    match_type: :exact | :fuzzy | :semantic,
-    matched_fields: [String.t()],
-    security_warnings: [map()]
-  }
+          tool: Types.tool(),
+          score: float(),
+          match_type: :exact | :fuzzy | :semantic,
+          matched_fields: [String.t()],
+          security_warnings: [map()]
+        }
 
   @doc """
   Creates a new search engine with default configuration.
@@ -58,17 +58,19 @@ defmodule ExUtcp.Search do
     filtered_tools = Filters.apply_filters(tools, opts.filters)
 
     # Apply search algorithm
-    results = case opts.algorithm do
-      :exact -> search_exact(filtered_tools, query, opts)
-      :fuzzy -> search_fuzzy(filtered_tools, query, opts)
-      :semantic -> search_semantic(filtered_tools, query, opts)
-      :combined -> search_combined(filtered_tools, query, opts)
-    end
+    results =
+      case opts.algorithm do
+        :exact -> search_exact(filtered_tools, query, opts)
+        :fuzzy -> search_fuzzy(filtered_tools, query, opts)
+        :semantic -> search_semantic(filtered_tools, query, opts)
+        :combined -> search_combined(filtered_tools, query, opts)
+      end
 
     # Rank and limit results
-    ranked_results = results
-    |> Ranking.rank_results(query, opts)
-    |> Enum.take(opts.limit)
+    ranked_results =
+      results
+      |> Ranking.rank_results(query, opts)
+      |> Enum.take(opts.limit)
 
     # Apply security scanning if requested
     if Map.get(opts, :security_scan, false) do
@@ -98,12 +100,13 @@ defmodule ExUtcp.Search do
     filtered_providers = Filters.apply_provider_filters(providers, opts.filters)
 
     # Apply search algorithm
-    results = case opts.algorithm do
-      :exact -> search_providers_exact(filtered_providers, query, opts)
-      :fuzzy -> search_providers_fuzzy(filtered_providers, query, opts)
-      :semantic -> search_providers_semantic(filtered_providers, query, opts)
-      :combined -> search_providers_combined(filtered_providers, query, opts)
-    end
+    results =
+      case opts.algorithm do
+        :exact -> search_providers_exact(filtered_providers, query, opts)
+        :fuzzy -> search_providers_fuzzy(filtered_providers, query, opts)
+        :semantic -> search_providers_semantic(filtered_providers, query, opts)
+        :combined -> search_providers_combined(filtered_providers, query, opts)
+      end
 
     # Rank and limit results
     results
@@ -119,8 +122,9 @@ defmodule ExUtcp.Search do
     limit = Keyword.get(opts, :limit, 5)
     threshold = Keyword.get(opts, :threshold, 0.3)
 
-    all_tools = Engine.get_all_tools(engine)
-    |> Enum.reject(&(&1.name == tool.name))
+    all_tools =
+      Engine.get_all_tools(engine)
+      |> Enum.reject(&(&1.name == tool.name))
 
     # Use semantic similarity based on descriptions and tags
     Semantic.find_similar_tools(tool, all_tools, threshold)
@@ -142,9 +146,10 @@ defmodule ExUtcp.Search do
       providers = Engine.get_all_providers(engine)
 
       # Get suggestions from tool names, descriptions, and provider names
-      tool_suggestions = Enum.flat_map(tools, fn tool ->
-        [tool.name | extract_keywords(tool.definition.description)]
-      end)
+      tool_suggestions =
+        Enum.flat_map(tools, fn tool ->
+          [tool.name | extract_keywords(tool.definition.description)]
+        end)
 
       provider_suggestions = Enum.map(providers, & &1.name)
 
@@ -183,8 +188,10 @@ defmodule ExUtcp.Search do
 
     Enum.filter(tools, fn tool ->
       name_match = String.downcase(tool.name) == query_lower
-      desc_match = opts.include_descriptions and
-                   String.contains?(String.downcase(tool.definition.description), query_lower)
+
+      desc_match =
+        opts.include_descriptions and
+          String.contains?(String.downcase(tool.definition.description), query_lower)
 
       name_match or desc_match
     end)
@@ -208,18 +215,26 @@ defmodule ExUtcp.Search do
     tools
     |> Enum.map(fn tool ->
       name_similarity = Fuzzy.best_similarity(tool.name, query)
-      desc_similarity = if opts.include_descriptions do
-        Fuzzy.best_similarity(tool.definition.description, query)
-      else
-        0.0
-      end
+
+      desc_similarity =
+        if opts.include_descriptions do
+          Fuzzy.best_similarity(tool.definition.description, query)
+        else
+          0.0
+        end
 
       max_similarity = max(name_similarity, desc_similarity)
 
       if max_similarity >= threshold do
         matched_fields = []
-        matched_fields = if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
-        matched_fields = if desc_similarity >= threshold, do: ["description" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if desc_similarity >= threshold,
+            do: ["description" | matched_fields],
+            else: matched_fields
 
         %{
           tool: tool,
@@ -227,8 +242,6 @@ defmodule ExUtcp.Search do
           match_type: :fuzzy,
           matched_fields: matched_fields
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -261,7 +274,7 @@ defmodule ExUtcp.Search do
 
     Enum.filter(providers, fn provider ->
       String.downcase(provider.name) == query_lower or
-      Atom.to_string(provider.type) == query_lower
+        Atom.to_string(provider.type) == query_lower
     end)
     |> Enum.map(fn provider ->
       %{
@@ -302,17 +315,19 @@ defmodule ExUtcp.Search do
     query_lower = String.downcase(query)
     fields = []
 
-    fields = if String.contains?(String.downcase(tool.name), query_lower) do
-      ["name" | fields]
-    else
-      fields
-    end
+    fields =
+      if String.contains?(String.downcase(tool.name), query_lower) do
+        ["name" | fields]
+      else
+        fields
+      end
 
-    fields = if String.contains?(String.downcase(tool.definition.description), query_lower) do
-      ["description" | fields]
-    else
-      fields
-    end
+    fields =
+      if String.contains?(String.downcase(tool.definition.description), query_lower) do
+        ["description" | fields]
+      else
+        fields
+      end
 
     case match_type do
       :exact -> fields

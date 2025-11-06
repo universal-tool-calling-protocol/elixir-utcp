@@ -20,7 +20,9 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
   @spec map_security_requirement(map(), map()) :: map() | nil
   def map_security_requirement(security_requirement, security_schemes) do
     case Map.keys(security_requirement) do
-      [] -> nil
+      [] ->
+        nil
+
       [scheme_name | _] ->
         case Map.get(security_schemes, scheme_name) do
           nil -> nil
@@ -54,12 +56,13 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
   # Private functions
 
   defp map_api_key_auth(scheme) do
-    location = case scheme.in do
-      "header" -> :header
-      "query" -> :query
-      "cookie" -> :cookie
-      _ -> :header
-    end
+    location =
+      case scheme.in do
+        "header" -> :header
+        "query" -> :query
+        "cookie" -> :cookie
+        _ -> :header
+      end
 
     %{
       type: :api_key,
@@ -96,7 +99,9 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
 
   defp map_oauth2_auth(scheme) do
     case scheme.flows do
-      nil -> nil
+      nil ->
+        nil
+
       flows ->
         # Prefer client_credentials flow for API usage
         cond do
@@ -212,7 +217,9 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
   @spec create_tool_auth(map(), list()) :: map() | nil
   def create_tool_auth(security_schemes, operation_security) do
     case operation_security do
-      [] -> nil
+      [] ->
+        nil
+
       [security_requirement | _] ->
         map_security_requirement(security_requirement, security_schemes)
     end
@@ -242,9 +249,10 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
 
   defp validate_api_key_auth(auth, security_schemes) do
     # Check if there's a matching API key security scheme
-    has_api_key_scheme = Enum.any?(security_schemes, fn {_name, scheme} ->
-      scheme.type == "apiKey"
-    end)
+    has_api_key_scheme =
+      Enum.any?(security_schemes, fn {_name, scheme} ->
+        scheme.type == "apiKey"
+      end)
 
     if has_api_key_scheme do
       {:ok, auth}
@@ -255,9 +263,10 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
 
   defp validate_basic_auth(auth, security_schemes) do
     # Check if there's a matching HTTP basic security scheme
-    has_basic_scheme = Enum.any?(security_schemes, fn {_name, scheme} ->
-      scheme.type == "http" && scheme.scheme == "basic"
-    end)
+    has_basic_scheme =
+      Enum.any?(security_schemes, fn {_name, scheme} ->
+        scheme.type == "http" && scheme.scheme == "basic"
+      end)
 
     if has_basic_scheme do
       {:ok, auth}
@@ -268,9 +277,10 @@ defmodule ExUtcp.OpenApiConverter.AuthMapper do
 
   defp validate_oauth2_auth(auth, security_schemes) do
     # Check if there's a matching OAuth2 security scheme
-    has_oauth2_scheme = Enum.any?(security_schemes, fn {_name, scheme} ->
-      scheme.type == "oauth2"
-    end)
+    has_oauth2_scheme =
+      Enum.any?(security_schemes, fn {_name, scheme} ->
+        scheme.type == "oauth2"
+      end)
 
     if has_oauth2_scheme do
       {:ok, auth}

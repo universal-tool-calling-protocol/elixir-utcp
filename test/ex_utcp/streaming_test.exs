@@ -4,15 +4,17 @@ defmodule ExUtcp.StreamingTest do
   """
 
   use ExUnit.Case, async: false
-  @moduletag :integration
 
   alias ExUtcp.{Client, Providers}
+
+  @moduletag :integration
 
   setup do
     config = %{
       providers_file_path: nil,
       variables: %{}
     }
+
     {:ok, client} = Client.start_link(config)
 
     # Start all transport processes
@@ -27,11 +29,12 @@ defmodule ExUtcp.StreamingTest do
 
   describe "HTTP Streaming" do
     test "creates proper stream result structure", %{client: client} do
-      provider = Providers.new_http_provider([
-        name: "test_http",
-        url: "https://httpbin.org/stream/5",
-        http_method: "GET"
-      ])
+      provider =
+        Providers.new_http_provider(
+          name: "test_http",
+          url: "https://httpbin.org/stream/5",
+          http_method: "GET"
+        )
 
       case Client.register_tool_provider(client, provider) do
         {:ok, _tools} ->
@@ -57,6 +60,7 @@ defmodule ExUtcp.StreamingTest do
               # Expected to fail in test environment
               assert is_binary(reason)
           end
+
         {:error, _reason} ->
           # Expected to fail in test environment
           :ok
@@ -66,11 +70,12 @@ defmodule ExUtcp.StreamingTest do
 
   describe "WebSocket Streaming" do
     test "creates proper stream result structure", %{client: client} do
-      provider = Providers.new_websocket_provider([
-        name: "test_ws",
-        url: "ws://echo.websocket.org",
-        keep_alive: true
-      ])
+      provider =
+        Providers.new_websocket_provider(
+          name: "test_ws",
+          url: "ws://echo.websocket.org",
+          keep_alive: true
+        )
 
       case Client.register_tool_provider(client, provider) do
         {:ok, _tools} ->
@@ -85,6 +90,7 @@ defmodule ExUtcp.StreamingTest do
               # Expected to fail in test environment
               assert is_binary(reason)
           end
+
         {:error, _reason} ->
           # Expected to fail in test environment
           :ok
@@ -94,10 +100,11 @@ defmodule ExUtcp.StreamingTest do
 
   describe "GraphQL Streaming" do
     test "creates proper stream result structure", %{client: client} do
-      provider = Providers.new_graphql_provider([
-        name: "test_graphql",
-        url: "https://api.example.com/graphql"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test_graphql",
+          url: "https://api.example.com/graphql"
+        )
 
       case Client.register_tool_provider(client, provider) do
         {:ok, _tools} ->
@@ -112,6 +119,7 @@ defmodule ExUtcp.StreamingTest do
               # Expected to fail in test environment
               assert is_binary(reason)
           end
+
         {:error, _reason} ->
           # Expected to fail in test environment
           :ok
@@ -121,13 +129,14 @@ defmodule ExUtcp.StreamingTest do
 
   describe "gRPC Streaming" do
     test "creates proper stream result structure", %{client: client} do
-      provider = Providers.new_grpc_provider([
-        name: "test_grpc",
-        host: "localhost",
-        port: 50051,
-        service_name: "TestService",
-        method_name: "StreamData"
-      ])
+      provider =
+        Providers.new_grpc_provider(
+          name: "test_grpc",
+          host: "localhost",
+          port: 50051,
+          service_name: "TestService",
+          method_name: "StreamData"
+        )
 
       case Client.register_tool_provider(client, provider) do
         {:ok, _tools} ->
@@ -143,6 +152,7 @@ defmodule ExUtcp.StreamingTest do
               # Expected to fail in test environment
               assert is_binary(reason)
           end
+
         {:error, _reason} ->
           # Expected to fail in test environment
           :ok
@@ -152,10 +162,11 @@ defmodule ExUtcp.StreamingTest do
 
   describe "MCP Streaming" do
     test "creates proper stream result structure", %{client: client} do
-      provider = Providers.new_mcp_provider([
-        name: "test_mcp",
-        url: "https://mcp.example.com/api"
-      ])
+      provider =
+        Providers.new_mcp_provider(
+          name: "test_mcp",
+          url: "https://mcp.example.com/api"
+        )
 
       case Client.register_tool_provider(client, provider) do
         {:ok, _tools} ->
@@ -170,6 +181,7 @@ defmodule ExUtcp.StreamingTest do
               # Expected to fail in test environment
               assert is_binary(reason)
           end
+
         {:error, _reason} ->
           # Expected to fail in test environment
           :ok
@@ -189,17 +201,18 @@ defmodule ExUtcp.StreamingTest do
       stream = Stream.map(mock_chunks, & &1)
 
       # Test stream processing
-      processed = stream
-      |> Stream.map(fn chunk ->
-        case chunk do
-          %{type: :end} -> :done
-          %{type: :error} -> :done
-          chunk when is_map(chunk) -> Map.get(chunk, :data, chunk)
-          chunk -> chunk
-        end
-      end)
-      |> Stream.reject(&(&1 == :done))
-      |> Enum.to_list()
+      processed =
+        stream
+        |> Stream.map(fn chunk ->
+          case chunk do
+            %{type: :end} -> :done
+            %{type: :error} -> :done
+            chunk when is_map(chunk) -> Map.get(chunk, :data, chunk)
+            chunk -> chunk
+          end
+        end)
+        |> Stream.reject(&(&1 == :done))
+        |> Enum.to_list()
 
       assert processed == ["chunk1", "chunk2"]
     end
@@ -215,9 +228,10 @@ defmodule ExUtcp.StreamingTest do
       stream = Stream.map(mock_chunks, & &1)
 
       # Test error handling
-      errors = stream
-      |> Stream.filter(fn chunk -> chunk.type == :error end)
-      |> Enum.to_list()
+      errors =
+        stream
+        |> Stream.filter(fn chunk -> chunk.type == :error end)
+        |> Enum.to_list()
 
       assert length(errors) == 1
       assert hd(errors).error == "Connection lost"
@@ -227,19 +241,35 @@ defmodule ExUtcp.StreamingTest do
     test "filters stream by metadata" do
       # Create a mock stream with different metadata
       mock_chunks = [
-        %{data: "chunk1", metadata: %{"type" => "data", "sequence" => 0}, timestamp: 1000, sequence: 0},
-        %{data: "chunk2", metadata: %{"type" => "control", "sequence" => 1}, timestamp: 2000, sequence: 1},
-        %{data: "chunk3", metadata: %{"type" => "data", "sequence" => 2}, timestamp: 3000, sequence: 2}
+        %{
+          data: "chunk1",
+          metadata: %{"type" => "data", "sequence" => 0},
+          timestamp: 1000,
+          sequence: 0
+        },
+        %{
+          data: "chunk2",
+          metadata: %{"type" => "control", "sequence" => 1},
+          timestamp: 2000,
+          sequence: 1
+        },
+        %{
+          data: "chunk3",
+          metadata: %{"type" => "data", "sequence" => 2},
+          timestamp: 3000,
+          sequence: 2
+        }
       ]
 
       stream = Stream.map(mock_chunks, & &1)
 
       # Filter by metadata
-      data_chunks = stream
-      |> Stream.filter(fn chunk ->
-        Map.get(chunk.metadata, "type") == "data"
-      end)
-      |> Enum.to_list()
+      data_chunks =
+        stream
+        |> Stream.filter(fn chunk ->
+          Map.get(chunk.metadata, "type") == "data"
+        end)
+        |> Enum.to_list()
 
       assert length(data_chunks) == 2
       assert hd(data_chunks).data == "chunk1"

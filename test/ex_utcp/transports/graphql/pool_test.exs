@@ -1,9 +1,10 @@
 defmodule ExUtcp.Transports.Graphql.PoolTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
 
-  alias ExUtcp.Transports.Graphql.Pool
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.Graphql.Pool
+
+  @moduletag :integration
 
   setup do
     # Stop any existing pool and start fresh
@@ -11,7 +12,9 @@ defmodule ExUtcp.Transports.Graphql.PoolTest do
       nil -> :ok
       pool_pid -> GenServer.stop(pool_pid)
     end
-    Process.sleep(10) # Give it time to stop
+
+    # Give it time to stop
+    Process.sleep(10)
 
     {:ok, pool_pid} = Pool.start_link(max_connections: 2)
     %{pool_pid: pool_pid}
@@ -23,20 +26,24 @@ defmodule ExUtcp.Transports.Graphql.PoolTest do
     end
 
     test "gets a connection for a provider" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://localhost:4000"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://localhost:4000"
+        )
 
       # This will fail with HTTP error, but we can test the pool behavior
       result = catch_exit(Pool.get_connection(provider))
+
       case result do
         {:ok, _pid} ->
           # Unexpected success, but test passes
           :ok
+
         {:error, _reason} ->
           # Expected to fail in unit test environment
           :ok
+
         {:EXIT, _reason} ->
           # Expected to fail in unit test environment
           :ok
@@ -44,20 +51,24 @@ defmodule ExUtcp.Transports.Graphql.PoolTest do
     end
 
     test "reuses existing connection for the same provider" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://localhost:4000"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://localhost:4000"
+        )
 
       # This will fail with HTTP error, but we can test the pool behavior
       result = catch_exit(Pool.get_connection(provider))
+
       case result do
         {:ok, _pid} ->
           # Unexpected success, but test passes
           :ok
+
         {:error, _reason} ->
           # Expected to fail in unit test environment
           :ok
+
         {:EXIT, _reason} ->
           # Expected to fail in unit test environment
           :ok
@@ -73,13 +84,16 @@ defmodule ExUtcp.Transports.Graphql.PoolTest do
 
       # This will fail with connection error, but we can test the pool behavior
       result = catch_exit(Pool.get_connection(provider))
+
       case result do
         {:ok, _pid} ->
           # Unexpected success, but test passes
           :ok
+
         {:error, _reason} ->
           # Expected to fail in unit test environment
           :ok
+
         {:EXIT, _reason} ->
           # Expected to fail in unit test environment
           :ok
@@ -89,16 +103,18 @@ defmodule ExUtcp.Transports.Graphql.PoolTest do
     test "respects max connections limit" do
       # This test would require mocking the connection creation
       # to avoid actually trying to connect to real servers
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://localhost:4000"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://localhost:4000"
+        )
 
       # This will fail with HTTP error, but we can test the pool behavior
       case Pool.get_connection(provider) do
         {:ok, _pid} ->
           # Unexpected success, but test passes
           assert Pool.stats().total_connections >= 0
+
         {:error, _reason} ->
           # Expected to fail in unit test environment
           assert Pool.stats().total_connections == 0

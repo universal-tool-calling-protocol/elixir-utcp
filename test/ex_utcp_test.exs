@@ -1,8 +1,9 @@
 defmodule ExUtcpTest do
   use ExUnit.Case
-  doctest ExUtcp
 
   alias ExUtcp.{Client, Config, Providers, Tools, Repository}
+
+  doctest ExUtcp
 
   describe "Config" do
     test "creates default configuration" do
@@ -14,10 +15,11 @@ defmodule ExUtcpTest do
     end
 
     test "creates configuration with options" do
-      config = Config.new(
-        variables: %{"API_KEY" => "test123"},
-        providers_file_path: "test.json"
-      )
+      config =
+        Config.new(
+          variables: %{"API_KEY" => "test123"},
+          providers_file_path: "test.json"
+        )
 
       assert config.variables == %{"API_KEY" => "test123"}
       assert config.providers_file_path == "test.json"
@@ -44,11 +46,12 @@ defmodule ExUtcpTest do
     test "creates a new tool" do
       provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
-      tool = Tools.new_tool([
-        name: "test_tool",
-        description: "A test tool",
-        provider: provider
-      ])
+      tool =
+        Tools.new_tool(
+          name: "test_tool",
+          description: "A test tool",
+          provider: provider
+        )
 
       assert tool.name == "test_tool"
       assert tool.description == "A test tool"
@@ -56,23 +59,24 @@ defmodule ExUtcpTest do
     end
 
     test "validates tool" do
-      tool = Tools.new_tool([name: "", provider: nil])
+      tool = Tools.new_tool(name: "", provider: nil)
 
       assert {:error, "Tool name is required"} = Tools.validate_tool(tool)
     end
 
     test "matches query" do
-      tool = Tools.new_tool([
-        name: "test_tool",
-        description: "A test tool",
-        tags: ["test", "example"],
-        provider: %{}
-      ])
+      tool =
+        Tools.new_tool(
+          name: "test_tool",
+          description: "A test tool",
+          tags: ["test", "example"],
+          provider: %{}
+        )
 
       assert Tools.matches_query?(tool, "test")
       assert Tools.matches_query?(tool, "tool")
       assert Tools.matches_query?(tool, "example")
-      assert not Tools.matches_query?(tool, "nonexistent")
+      refute Tools.matches_query?(tool, "nonexistent")
     end
 
     test "normalizes tool name" do
@@ -89,10 +93,11 @@ defmodule ExUtcpTest do
 
   describe "Providers" do
     test "creates HTTP provider" do
-      provider = Providers.new_http_provider([
-        name: "test",
-        url: "http://example.com"
-      ])
+      provider =
+        Providers.new_http_provider(
+          name: "test",
+          url: "http://example.com"
+        )
 
       assert provider.name == "test"
       assert provider.type == :http
@@ -100,10 +105,11 @@ defmodule ExUtcpTest do
     end
 
     test "creates CLI provider" do
-      provider = Providers.new_cli_provider([
-        name: "test",
-        command_name: "echo hello"
-      ])
+      provider =
+        Providers.new_cli_provider(
+          name: "test",
+          command_name: "echo hello"
+        )
 
       assert provider.name == "test"
       assert provider.type == :cli
@@ -111,10 +117,11 @@ defmodule ExUtcpTest do
     end
 
     test "creates WebSocket provider" do
-      provider = Providers.new_websocket_provider([
-        name: "test",
-        url: "ws://example.com/ws"
-      ])
+      provider =
+        Providers.new_websocket_provider(
+          name: "test",
+          url: "ws://example.com/ws"
+        )
 
       assert provider.name == "test"
       assert provider.type == :websocket
@@ -124,11 +131,12 @@ defmodule ExUtcpTest do
     end
 
     test "creates gRPC provider" do
-      provider = Providers.new_grpc_provider([
-        name: "test",
-        host: "localhost",
-        port: 9339
-      ])
+      provider =
+        Providers.new_grpc_provider(
+          name: "test",
+          host: "localhost",
+          port: 9339
+        )
 
       assert provider.name == "test"
       assert provider.type == :grpc

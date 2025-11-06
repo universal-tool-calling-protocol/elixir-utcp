@@ -36,11 +36,12 @@ defmodule ExUtcp.Search.Ranking do
     base_score = 0.5
 
     # Get name from either tool or provider
-    name_lower = case result do
-      %{tool: tool} -> String.downcase(tool.name || "")
-      %{provider: provider} -> String.downcase(provider.name || "")
-      _ -> ""
-    end
+    name_lower =
+      case result do
+        %{tool: tool} -> String.downcase(tool.name || "")
+        %{provider: provider} -> String.downcase(provider.name || "")
+        _ -> ""
+      end
 
     cond do
       String.contains?(name_lower, ["get", "list", "fetch", "retrieve"]) -> base_score + 0.3
@@ -69,37 +70,48 @@ defmodule ExUtcp.Search.Ranking do
     base_score = 0.5
 
     # Check for description quality
-    desc_score = if String.length(tool.definition.description) > 50 do
-      0.2
-    else
-      0.0
-    end
+    desc_score =
+      if String.length(tool.definition.description) > 50 do
+        0.2
+      else
+        0.0
+      end
 
     # Check for parameter documentation
-    param_score = case tool.definition do
-      %{parameters: %{"properties" => properties}} ->
-        documented_params = properties
-        |> Enum.count(fn {_name, param_def} ->
-          Map.has_key?(param_def, "description") and String.length(param_def["description"]) > 10
-        end)
+    param_score =
+      case tool.definition do
+        %{parameters: %{"properties" => properties}} ->
+          documented_params =
+            properties
+            |> Enum.count(fn {_name, param_def} ->
+              Map.has_key?(param_def, "description") and
+                String.length(param_def["description"]) > 10
+            end)
 
-        total_params = map_size(properties)
-        if total_params > 0, do: documented_params / total_params * 0.2, else: 0.0
-      _ -> 0.0
-    end
+          total_params = map_size(properties)
+          if total_params > 0, do: documented_params / total_params * 0.2, else: 0.0
+
+        _ ->
+          0.0
+      end
 
     # Check for response documentation
-    response_score = case tool.definition do
-      %{response: %{"properties" => properties}} ->
-        documented_responses = properties
-        |> Enum.count(fn {_name, field_def} ->
-          Map.has_key?(field_def, "description") and String.length(field_def["description"]) > 10
-        end)
+    response_score =
+      case tool.definition do
+        %{response: %{"properties" => properties}} ->
+          documented_responses =
+            properties
+            |> Enum.count(fn {_name, field_def} ->
+              Map.has_key?(field_def, "description") and
+                String.length(field_def["description"]) > 10
+            end)
 
-        total_responses = map_size(properties)
-        if total_responses > 0, do: documented_responses / total_responses * 0.1, else: 0.0
-      _ -> 0.0
-    end
+          total_responses = map_size(properties)
+          if total_responses > 0, do: documented_responses / total_responses * 0.1, else: 0.0
+
+        _ ->
+          0.0
+      end
 
     base_score + desc_score + param_score + response_score
   end
@@ -119,11 +131,12 @@ defmodule ExUtcp.Search.Ranking do
     query_lower = String.downcase(query)
 
     # Boost score for exact matches in important fields
-    exact_name_match = case result do
-      %{tool: tool} -> String.downcase(tool.name) == query_lower
-      %{provider: provider} -> String.downcase(provider.name) == query_lower
-      _ -> false
-    end
+    exact_name_match =
+      case result do
+        %{tool: tool} -> String.downcase(tool.name) == query_lower
+        %{provider: provider} -> String.downcase(provider.name) == query_lower
+        _ -> false
+      end
 
     if exact_name_match do
       1.0
@@ -148,21 +161,26 @@ defmodule ExUtcp.Search.Ranking do
     boost_factors = Map.get(opts, :boost_factors, %{})
 
     # Apply transport-specific boosts
-    transport_boost = case result do
-      %{tool: tool} ->
-        transport = infer_transport_from_tool(tool)
-        Map.get(boost_factors, transport, 1.0)
-      %{provider: provider} ->
-        Map.get(boost_factors, provider.type, 1.0)
-      _ -> 1.0
-    end
+    transport_boost =
+      case result do
+        %{tool: tool} ->
+          transport = infer_transport_from_tool(tool)
+          Map.get(boost_factors, transport, 1.0)
+
+        %{provider: provider} ->
+          Map.get(boost_factors, provider.type, 1.0)
+
+        _ ->
+          1.0
+      end
 
     # Apply match type boosts
-    match_type_boost = case result.match_type do
-      :exact -> Map.get(boost_factors, :exact_match, 1.2)
-      :fuzzy -> Map.get(boost_factors, :fuzzy_match, 1.0)
-      :semantic -> Map.get(boost_factors, :semantic_match, 0.9)
-    end
+    match_type_boost =
+      case result.match_type do
+        :exact -> Map.get(boost_factors, :exact_match, 1.2)
+        :fuzzy -> Map.get(boost_factors, :fuzzy_match, 1.0)
+        :semantic -> Map.get(boost_factors, :semantic_match, 0.9)
+      end
 
     boosted_score = result.score * transport_boost * match_type_boost
     %{result | score: boosted_score}
@@ -188,11 +206,11 @@ defmodule ExUtcp.Search.Ranking do
     }
 
     final_score =
-      (base_score * weights.base) +
-      (popularity * weights.popularity) +
-      (recency * weights.recency) +
-      (quality * weights.quality) +
-      (context_relevance * weights.context)
+      base_score * weights.base +
+        popularity * weights.popularity +
+        recency * weights.recency +
+        quality * weights.quality +
+        context_relevance * weights.context
 
     result = %{result | score: final_score}
 
@@ -207,7 +225,7 @@ defmodule ExUtcp.Search.Ranking do
     context_relevance = context_relevance_score(result, query)
 
     # Weighted combination
-    final_score = (base_score * 0.6) + (popularity * 0.2) + (context_relevance * 0.2)
+    final_score = base_score * 0.6 + popularity * 0.2 + context_relevance * 0.2
 
     result = %{result | score: final_score}
 

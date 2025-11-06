@@ -4,9 +4,10 @@ defmodule ExUtcp.Transports.Grpc.Connection do
   """
 
   use GenServer
-  require Logger
 
   alias ExUtcp.Grpcpb.{UTCPService.Stub, Empty, ToolCallRequest}
+
+  require Logger
 
   defstruct [
     :provider,
@@ -107,9 +108,11 @@ defmodule ExUtcp.Transports.Grpc.Connection do
           {:ok, manual} ->
             tools = Enum.map(manual.tools, &normalize_tool/1)
             {:reply, {:ok, tools}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -128,9 +131,11 @@ defmodule ExUtcp.Transports.Grpc.Connection do
           {:ok, response} ->
             result = Jason.decode!(response.result_json)
             {:reply, {:ok, result}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -149,9 +154,11 @@ defmodule ExUtcp.Transports.Grpc.Connection do
           {:ok, responses} ->
             results = Enum.map(responses, &Jason.decode!(&1.result_json))
             {:reply, {:ok, results}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -181,40 +188,42 @@ defmodule ExUtcp.Transports.Grpc.Connection do
   # Private functions
 
   defp establish_connection(state) do
-    try do
-      endpoint = build_endpoint(state.provider)
-      channel_opts = build_channel_opts(state.provider)
+    endpoint = build_endpoint(state.provider)
+    channel_opts = build_channel_opts(state.provider)
 
-      # For now, simulate a connection since the gRPC library API may vary
-      # In a real implementation, this would use the actual gRPC connection
-      try do
-        # Simulate connection attempt
-        channel = %{endpoint: endpoint, opts: channel_opts}
-        stub = Stub
-        new_state = %{state |
-          channel: channel,
+    # For now, simulate a connection since the gRPC library API may vary
+    # In a real implementation, this would use the actual gRPC connection
+    try do
+      # Simulate connection attempt
+      channel = %{endpoint: endpoint, opts: channel_opts}
+      stub = Stub
+
+      new_state = %{
+        state
+        | channel: channel,
           stub: stub,
           connection_state: :connected,
           retry_count: 0
-        }
-        Logger.info("gRPC connection established to #{endpoint}")
-        {:ok, new_state}
-      rescue
-        error ->
-          Logger.error("Failed to connect to gRPC endpoint #{endpoint}: #{inspect(error)}")
-          {:error, error}
-      end
+      }
+
+      Logger.info("gRPC connection established to #{endpoint}")
+      {:ok, new_state}
     rescue
       error ->
-        Logger.error("Exception during gRPC connection: #{inspect(error)}")
+        Logger.error("Failed to connect to gRPC endpoint #{endpoint}: #{inspect(error)}")
         {:error, error}
     end
+  rescue
+    error ->
+      Logger.error("Exception during gRPC connection: #{inspect(error)}")
+      {:error, error}
   end
 
   defp ensure_connected(state) do
     case state.connection_state do
       :connected ->
         {:ok, state}
+
       _ ->
         case establish_connection(state) do
           {:ok, new_state} -> {:ok, new_state}
@@ -224,40 +233,43 @@ defmodule ExUtcp.Transports.Grpc.Connection do
   end
 
   defp call_grpc_service(_state, method, request, _timeout) do
-    try do
-      # Simulate gRPC service calls since we don't have a real server
-      # In a real implementation, this would use the actual gRPC stub
-      case method do
-        :get_manual ->
-          # Simulate getting manual/tools
-          manual = %ExUtcp.Grpcpb.Manual{
-            version: "1.0.0",
-            tools: []
+    # Simulate gRPC service calls since we don't have a real server
+    # In a real implementation, this would use the actual gRPC stub
+    case method do
+      :get_manual ->
+        # Simulate getting manual/tools
+        manual = %ExUtcp.Grpcpb.Manual{
+          version: "1.0.0",
+          tools: []
+        }
+
+        {:ok, manual}
+
+      :call_tool ->
+        # Simulate tool call response
+        response = %ExUtcp.Grpcpb.ToolCallResponse{
+          result_json: Jason.encode!(%{"result" => "Mock gRPC response for #{request.tool}"})
+        }
+
+        {:ok, response}
+
+      :call_tool_stream ->
+        # Simulate tool stream response
+        responses = [
+          %ExUtcp.Grpcpb.ToolCallResponse{
+            result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 1"})
+          },
+          %ExUtcp.Grpcpb.ToolCallResponse{
+            result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 2"})
           }
-          {:ok, manual}
-        :call_tool ->
-          # Simulate tool call response
-          response = %ExUtcp.Grpcpb.ToolCallResponse{
-            result_json: Jason.encode!(%{"result" => "Mock gRPC response for #{request.tool}"})
-          }
-          {:ok, response}
-        :call_tool_stream ->
-          # Simulate tool stream response
-          responses = [
-            %ExUtcp.Grpcpb.ToolCallResponse{
-              result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 1"})
-            },
-            %ExUtcp.Grpcpb.ToolCallResponse{
-              result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 2"})
-            }
-          ]
-          {:ok, responses}
-      end
-    rescue
-      error ->
-        Logger.error("gRPC call failed: #{inspect(error)}")
-        {:error, error}
+        ]
+
+        {:ok, responses}
     end
+  rescue
+    error ->
+      Logger.error("gRPC call failed: #{inspect(error)}")
+      {:error, error}
   end
 
   defp build_endpoint(provider) do
@@ -286,13 +298,16 @@ defmodule ExUtcp.Transports.Grpc.Connection do
       :api_key ->
         headers = [{"authorization", "Bearer #{auth.api_key}"}]
         Keyword.put(opts, :headers, headers)
+
       :basic ->
         credentials = Base.encode64("#{auth.username}:#{auth.password}")
         headers = [{"authorization", "Basic #{credentials}"}]
         Keyword.put(opts, :headers, headers)
+
       :oauth2 ->
         headers = [{"authorization", "Bearer #{auth.access_token}"}]
         Keyword.put(opts, :headers, headers)
+
       _ ->
         opts
     end

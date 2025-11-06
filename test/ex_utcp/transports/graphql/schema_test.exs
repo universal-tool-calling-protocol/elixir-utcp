@@ -21,7 +21,10 @@ defmodule ExUtcp.Transports.Graphql.SchemaTest do
                     %{
                       "name" => "id",
                       "description" => "User ID",
-                      "type" => %{"kind" => "NON_NULL", "ofType" => %{"kind" => "SCALAR", "name" => "String"}}
+                      "type" => %{
+                        "kind" => "NON_NULL",
+                        "ofType" => %{"kind" => "SCALAR", "name" => "String"}
+                      }
                     }
                   ]
                 }
@@ -37,7 +40,10 @@ defmodule ExUtcp.Transports.Graphql.SchemaTest do
                     %{
                       "name" => "input",
                       "description" => "User input",
-                      "type" => %{"kind" => "NON_NULL", "ofType" => %{"kind" => "SCALAR", "name" => "String"}}
+                      "type" => %{
+                        "kind" => "NON_NULL",
+                        "ofType" => %{"kind" => "SCALAR", "name" => "String"}
+                      }
                     }
                   ]
                 }
@@ -62,7 +68,10 @@ defmodule ExUtcp.Transports.Graphql.SchemaTest do
 
     test "rejects invalid query string" do
       assert {:error, "Empty query"} = Schema.validate_query("")
-      assert {:error, "Query must contain query, mutation, or subscription"} = Schema.validate_query("invalid")
+
+      assert {:error, "Query must contain query, mutation, or subscription"} =
+               Schema.validate_query("invalid")
+
       assert {:error, "Query must contain selection set"} = Schema.validate_query("query")
     end
 

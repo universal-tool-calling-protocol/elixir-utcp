@@ -14,9 +14,9 @@ defmodule ExUtcp.Transports.WebRTC do
   use GenServer
   use ExUtcp.Transports.Behaviour
 
-  require Logger
-
   alias ExUtcp.Transports.WebRTC.{Connection, Signaling}
+
+  require Logger
 
   @enforce_keys [:signaling_server, :ice_servers, :connection_timeout]
   defstruct [
@@ -28,12 +28,12 @@ defmodule ExUtcp.Transports.WebRTC do
   ]
 
   @type t :: %__MODULE__{
-    signaling_server: String.t(),
-    ice_servers: [map()],
-    connection_timeout: integer(),
-    connections: %{String.t() => pid()},
-    providers: %{String.t() => map()}
-  }
+          signaling_server: String.t(),
+          ice_servers: [map()],
+          connection_timeout: integer(),
+          connections: %{String.t() => pid()},
+          providers: %{String.t() => map()}
+        }
 
   @doc """
   Creates a new WebRTC transport.
@@ -68,6 +68,7 @@ defmodule ExUtcp.Transports.WebRTC do
     case provider.type do
       :webrtc ->
         GenServer.call(__MODULE__, {:register_tool_provider, provider})
+
       _ ->
         {:error, "WebRTC transport can only be used with WebRTC providers"}
     end
@@ -78,6 +79,7 @@ defmodule ExUtcp.Transports.WebRTC do
     case provider.type do
       :webrtc ->
         GenServer.call(__MODULE__, {:deregister_tool_provider, provider})
+
       _ ->
         {:error, "WebRTC transport can only be used with WebRTC providers"}
     end
@@ -87,7 +89,12 @@ defmodule ExUtcp.Transports.WebRTC do
   def call_tool(tool_name, args, provider) do
     case provider.type do
       :webrtc ->
-        GenServer.call(__MODULE__, {:call_tool, tool_name, args, provider}, provider.timeout || 30_000)
+        GenServer.call(
+          __MODULE__,
+          {:call_tool, tool_name, args, provider},
+          provider.timeout || 30_000
+        )
+
       _ ->
         {:error, "WebRTC transport can only be used with WebRTC providers"}
     end
@@ -97,7 +104,12 @@ defmodule ExUtcp.Transports.WebRTC do
   def call_tool_stream(tool_name, args, provider) do
     case provider.type do
       :webrtc ->
-        GenServer.call(__MODULE__, {:call_tool_stream, tool_name, args, provider}, provider.timeout || 30_000)
+        GenServer.call(
+          __MODULE__,
+          {:call_tool_stream, tool_name, args, provider},
+          provider.timeout || 30_000
+        )
+
       _ ->
         {:error, "WebRTC transport can only be used with WebRTC providers"}
     end
@@ -122,6 +134,7 @@ defmodule ExUtcp.Transports.WebRTC do
       {:ok, tools} ->
         new_state = %{state | providers: Map.put(state.providers, provider.name, provider)}
         {:reply, {:ok, tools}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -135,9 +148,10 @@ defmodule ExUtcp.Transports.WebRTC do
       conn_pid -> Connection.close(conn_pid)
     end
 
-    new_state = %{state |
-      providers: Map.delete(state.providers, provider.name),
-      connections: Map.delete(state.connections, provider.name)
+    new_state = %{
+      state
+      | providers: Map.delete(state.providers, provider.name),
+        connections: Map.delete(state.connections, provider.name)
     }
 
     {:reply, :ok, new_state}
@@ -148,9 +162,13 @@ defmodule ExUtcp.Transports.WebRTC do
     case get_or_create_connection(provider, state) do
       {:ok, conn_pid, new_state} ->
         case Connection.call_tool(conn_pid, tool_name, args, provider.timeout || 30_000) do
-          {:ok, result} -> {:reply, {:ok, result}, new_state}
-          {:error, reason} -> {:reply, {:error, "Failed to call tool: #{inspect(reason)}"}, new_state}
+          {:ok, result} ->
+            {:reply, {:ok, result}, new_state}
+
+          {:error, reason} ->
+            {:reply, {:error, "Failed to call tool: #{inspect(reason)}"}, new_state}
         end
+
       {:error, reason} ->
         {:reply, {:error, "Failed to get connection: #{inspect(reason)}"}, state}
     end
@@ -164,10 +182,19 @@ defmodule ExUtcp.Transports.WebRTC do
           {:ok, stream} ->
             # Enhance the stream with WebRTC-specific metadata
             enhanced_stream = create_webrtc_stream(stream, tool_name, provider)
-            {:reply, {:ok, %{type: :stream, data: enhanced_stream, metadata: %{"transport" => "webrtc", "tool" => tool_name}}}, new_state}
+
+            {:reply,
+             {:ok,
+              %{
+                type: :stream,
+                data: enhanced_stream,
+                metadata: %{"transport" => "webrtc", "tool" => tool_name}
+              }}, new_state}
+
           {:error, reason} ->
             {:reply, {:error, "Failed to call tool stream: #{inspect(reason)}"}, new_state}
         end
+
       {:error, reason} ->
         {:reply, {:error, "Failed to get connection: #{inspect(reason)}"}, state}
     end
@@ -188,11 +215,12 @@ defmodule ExUtcp.Transports.WebRTC do
   defp discover_tools(provider) do
     # For WebRTC, tools would be discovered through the signaling server
     # or provided in the provider configuration
-    tools = case Map.get(provider, :tools) do
-      nil -> []
-      tools when is_list(tools) -> tools
-      _ -> []
-    end
+    tools =
+      case Map.get(provider, :tools) do
+        nil -> []
+        tools when is_list(tools) -> tools
+        _ -> []
+      end
 
     {:ok, tools}
   end
@@ -206,9 +234,11 @@ defmodule ExUtcp.Transports.WebRTC do
             new_connections = Map.put(state.connections, provider.name, conn_pid)
             new_state = %{state | connections: new_connections}
             {:ok, conn_pid, new_state}
+
           {:error, reason} ->
             {:error, reason}
         end
+
       conn_pid ->
         # Reuse existing connection
         if Process.alive?(conn_pid) do
@@ -220,6 +250,7 @@ defmodule ExUtcp.Transports.WebRTC do
               new_connections = Map.put(state.connections, provider.name, new_conn_pid)
               new_state = %{state | connections: new_connections}
               {:ok, new_conn_pid, new_state}
+
             {:error, reason} ->
               {:error, reason}
           end
@@ -243,6 +274,7 @@ defmodule ExUtcp.Transports.WebRTC do
               "timestamp" => System.system_time(:millisecond)
             }
           }
+
         %{type: :result, data: data} ->
           %{
             type: :stream_result,
@@ -254,6 +286,7 @@ defmodule ExUtcp.Transports.WebRTC do
               "timestamp" => System.system_time(:millisecond)
             }
           }
+
         %{type: :error, error: error} ->
           %{
             type: :stream_error,
@@ -265,6 +298,7 @@ defmodule ExUtcp.Transports.WebRTC do
               "timestamp" => System.system_time(:millisecond)
             }
           }
+
         _ ->
           %{
             type: :stream_chunk,

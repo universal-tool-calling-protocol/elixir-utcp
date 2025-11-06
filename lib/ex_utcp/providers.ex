@@ -89,7 +89,6 @@ defmodule ExUtcp.Providers do
     }
   end
 
-
   @doc """
   Creates a new WebRTC provider.
   """
@@ -100,9 +99,10 @@ defmodule ExUtcp.Providers do
       type: :webrtc,
       peer_id: Keyword.get(opts, :peer_id),
       signaling_server: Keyword.get(opts, :signaling_server, "wss://signaling.example.com"),
-      ice_servers: Keyword.get(opts, :ice_servers, [
-        %{urls: ["stun:stun.l.google.com:19302"]}
-      ]),
+      ice_servers:
+        Keyword.get(opts, :ice_servers, [
+          %{urls: ["stun:stun.l.google.com:19302"]}
+        ]),
       timeout: Keyword.get(opts, :timeout, 30_000),
       tools: Keyword.get(opts, :tools, [])
     }

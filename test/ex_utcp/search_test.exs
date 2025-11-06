@@ -1,10 +1,11 @@
 defmodule ExUtcp.SearchTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
+  alias ExUtcp.Providers
   alias ExUtcp.Search
   alias ExUtcp.Search.Engine
-  alias ExUtcp.Providers
+
+  @moduletag :unit
 
   describe "Search Engine" do
     test "creates new search engine" do
@@ -27,11 +28,12 @@ defmodule ExUtcp.SearchTest do
     test "adds and retrieves providers" do
       engine = Search.new()
 
-      provider = Providers.new_http_provider(
-        name: "test_provider",
-        url: "https://api.example.com",
-        http_method: "POST"
-      )
+      provider =
+        Providers.new_http_provider(
+          name: "test_provider",
+          url: "https://api.example.com",
+          http_method: "POST"
+        )
 
       engine = Engine.add_provider(engine, provider)
 
@@ -43,60 +45,70 @@ defmodule ExUtcp.SearchTest do
       engine = Search.new()
 
       tool = create_test_tool("test_tool", "A test tool")
-      provider = Providers.new_http_provider(
-        name: "test_provider",
-        url: "https://api.example.com",
-        http_method: "POST"
-      )
 
-      engine = engine
-      |> Engine.add_tool(tool)
-      |> Engine.add_provider(provider)
+      provider =
+        Providers.new_http_provider(
+          name: "test_provider",
+          url: "https://api.example.com",
+          http_method: "POST"
+        )
+
+      engine =
+        engine
+        |> Engine.add_tool(tool)
+        |> Engine.add_provider(provider)
 
       assert length(Engine.get_all_tools(engine)) == 1
       assert length(Engine.get_all_providers(engine)) == 1
 
-      engine = engine
-      |> Engine.remove_tool("test_tool")
-      |> Engine.remove_provider("test_provider")
+      engine =
+        engine
+        |> Engine.remove_tool("test_tool")
+        |> Engine.remove_provider("test_provider")
 
-      assert length(Engine.get_all_tools(engine)) == 0
-      assert length(Engine.get_all_providers(engine)) == 0
+      assert Enum.empty?(Engine.get_all_tools(engine))
+      assert Enum.empty?(Engine.get_all_providers(engine))
     end
 
     test "clears all data" do
       engine = Search.new()
 
       tool = create_test_tool("test_tool", "A test tool")
-      provider = Providers.new_http_provider(
-        name: "test_provider",
-        url: "https://api.example.com",
-        http_method: "POST"
-      )
 
-      engine = engine
-      |> Engine.add_tool(tool)
-      |> Engine.add_provider(provider)
+      provider =
+        Providers.new_http_provider(
+          name: "test_provider",
+          url: "https://api.example.com",
+          http_method: "POST"
+        )
+
+      engine =
+        engine
+        |> Engine.add_tool(tool)
+        |> Engine.add_provider(provider)
 
       engine = Engine.clear(engine)
 
-      assert length(Engine.get_all_tools(engine)) == 0
-      assert length(Engine.get_all_providers(engine)) == 0
+      assert Enum.empty?(Engine.get_all_tools(engine))
+      assert Enum.empty?(Engine.get_all_providers(engine))
     end
 
     test "provides statistics" do
       engine = Search.new()
 
       tool = create_test_tool("test_tool", "A test tool")
-      provider = Providers.new_http_provider(
-        name: "test_provider",
-        url: "https://api.example.com",
-        http_method: "POST"
-      )
 
-      engine = engine
-      |> Engine.add_tool(tool)
-      |> Engine.add_provider(provider)
+      provider =
+        Providers.new_http_provider(
+          name: "test_provider",
+          url: "https://api.example.com",
+          http_method: "POST"
+        )
+
+      engine =
+        engine
+        |> Engine.add_tool(tool)
+        |> Engine.add_provider(provider)
 
       stats = Engine.stats(engine)
 
@@ -132,7 +144,8 @@ defmodule ExUtcp.SearchTest do
       assert length(results) == 1
       assert hd(results).tool.name == "get_user"
       assert hd(results).match_type == :exact
-      assert hd(results).score >= 1.0  # May be boosted by ranking algorithm
+      # May be boosted by ranking algorithm
+      assert hd(results).score >= 1.0
     end
 
     test "fuzzy search finds approximate matches", %{engine: engine} do
@@ -148,17 +161,22 @@ defmodule ExUtcp.SearchTest do
     end
 
     test "semantic search finds related tools", %{engine: engine} do
-      results = Search.search_tools(engine, "user management", %{
-        algorithm: :semantic,
-        threshold: 0.1,  # Lower threshold for testing
-        use_haystack: false  # Use keyword-based for testing
-      })
+      results =
+        Search.search_tools(engine, "user management", %{
+          algorithm: :semantic,
+          # Lower threshold for testing
+          threshold: 0.1,
+          # Use keyword-based for testing
+          use_haystack: false
+        })
 
-      assert length(results) >= 1  # At least one result
+      # At least one result
+      assert length(results) >= 1
 
       # Should find user-related tools
       user_tools = Enum.filter(results, &String.contains?(&1.tool.name, "user"))
-      assert length(user_tools) >= 1  # At least one user tool
+      # At least one user tool
+      assert length(user_tools) >= 1
     end
 
     test "combined search provides comprehensive results", %{engine: engine} do
@@ -173,19 +191,27 @@ defmodule ExUtcp.SearchTest do
 
     test "search with filters", %{engine: engine} do
       # Add providers to test filtering
-      provider1 = Providers.new_http_provider(name: "api_provider", url: "https://api.example.com", http_method: "GET")
+      provider1 =
+        Providers.new_http_provider(
+          name: "api_provider",
+          url: "https://api.example.com",
+          http_method: "GET"
+        )
+
       provider2 = Providers.new_cli_provider(name: "cli_provider", command_name: "test")
 
-      engine = engine
-      |> Engine.add_provider(provider1)
-      |> Engine.add_provider(provider2)
+      engine =
+        engine
+        |> Engine.add_provider(provider1)
+        |> Engine.add_provider(provider2)
 
       # Test provider filtering
-      results = Search.search_tools(engine, "user", %{
-        algorithm: :combined,
-        filters: %{providers: ["api_provider"]},
-        threshold: 0.1
-      })
+      results =
+        Search.search_tools(engine, "user", %{
+          algorithm: :combined,
+          filters: %{providers: ["api_provider"]},
+          threshold: 0.1
+        })
 
       # All results should be from the specified provider
       Enum.each(results, fn result ->
@@ -198,10 +224,11 @@ defmodule ExUtcp.SearchTest do
       sensitive_tool = create_test_tool("api_tool", "API tool with key: sk-1234567890abcdef")
       engine = Engine.add_tool(engine, sensitive_tool)
 
-      results = Search.search_tools(engine, "api", %{
-        algorithm: :exact,
-        security_scan: true
-      })
+      results =
+        Search.search_tools(engine, "api", %{
+          algorithm: :exact,
+          security_scan: true
+        })
 
       assert length(results) >= 1
 
@@ -216,19 +243,21 @@ defmodule ExUtcp.SearchTest do
       normal_tool = create_test_tool("normal_tool", "A normal tool")
       sensitive_tool = create_test_tool("sensitive_tool", "Tool with password: secret123")
 
-      engine = engine
-      |> Engine.add_tool(normal_tool)
-      |> Engine.add_tool(sensitive_tool)
+      engine =
+        engine
+        |> Engine.add_tool(normal_tool)
+        |> Engine.add_tool(sensitive_tool)
 
-      results = Search.search_tools(engine, "tool", %{
-        algorithm: :fuzzy,
-        security_scan: true,
-        filter_sensitive: true,
-        threshold: 0.3
-      })
+      results =
+        Search.search_tools(engine, "tool", %{
+          algorithm: :fuzzy,
+          security_scan: true,
+          filter_sensitive: true,
+          threshold: 0.3
+        })
 
       # Sensitive tool should be filtered out
-      tool_names = Enum.map(results, &(&1.tool.name))
+      tool_names = Enum.map(results, & &1.tool.name)
       assert "normal_tool" in tool_names
       refute "sensitive_tool" in tool_names
     end
@@ -241,7 +270,7 @@ defmodule ExUtcp.SearchTest do
 
       # Should include user-related suggestions
       user_suggestions = Enum.filter(suggestions, &String.contains?(&1, "user"))
-      assert length(user_suggestions) > 0
+      refute Enum.empty?(user_suggestions)
     end
 
     test "similar tools discovery", %{engine: engine} do
@@ -254,7 +283,7 @@ defmodule ExUtcp.SearchTest do
       assert length(similar_tools) <= 3
 
       # Should not include the reference tool itself
-      tool_names = Enum.map(similar_tools, &(&1.tool.name))
+      tool_names = Enum.map(similar_tools, & &1.tool.name)
       refute "get_user" in tool_names
     end
   end
@@ -264,9 +293,18 @@ defmodule ExUtcp.SearchTest do
       engine = Search.new()
 
       providers = [
-        Providers.new_http_provider(name: "api_provider", url: "https://api.example.com", http_method: "GET"),
+        Providers.new_http_provider(
+          name: "api_provider",
+          url: "https://api.example.com",
+          http_method: "GET"
+        ),
         Providers.new_websocket_provider(name: "ws_provider", url: "wss://ws.example.com"),
-        Providers.new_grpc_provider(name: "grpc_provider", url: "grpc://grpc.example.com", proto_path: "/path", service_name: "Service"),
+        Providers.new_grpc_provider(
+          name: "grpc_provider",
+          url: "grpc://grpc.example.com",
+          proto_path: "/path",
+          service_name: "Service"
+        ),
         Providers.new_cli_provider(name: "cli_provider", command_name: "test")
       ]
 
@@ -293,14 +331,15 @@ defmodule ExUtcp.SearchTest do
     end
 
     test "filters providers by transport", %{engine: engine} do
-      results = Search.search_providers(engine, "provider", %{
-        algorithm: :fuzzy,
-        filters: %{transports: [:websocket, :grpc]},
-        threshold: 0.3
-      })
+      results =
+        Search.search_providers(engine, "provider", %{
+          algorithm: :fuzzy,
+          filters: %{transports: [:websocket, :grpc]},
+          threshold: 0.3
+        })
 
       # Should only return WebSocket and gRPC providers
-      transport_types = Enum.map(results, &(&1.provider.type)) |> Enum.uniq()
+      transport_types = Enum.map(results, & &1.provider.type) |> Enum.uniq()
       assert Enum.all?(transport_types, &(&1 in [:websocket, :grpc]))
     end
   end

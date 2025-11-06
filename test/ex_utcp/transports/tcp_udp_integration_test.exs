@@ -1,9 +1,10 @@
 defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
 
-  alias ExUtcp.Transports.TcpUdp
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.TcpUdp
+
+  @moduletag :integration
 
   setup do
     # Start the transport
@@ -18,11 +19,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
   describe "TCP Integration Tests" do
     test "connects to TCP server when available" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "httpbin.org",
-        port: 80
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "httpbin.org",
+          port: 80
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -33,12 +35,14 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
     end
 
     test "handles TCP connection timeout" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "192.0.2.1", # Non-routable IP for timeout testing
-        port: 80,
-        timeout: 1000
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          # Non-routable IP for timeout testing
+          host: "192.0.2.1",
+          port: 80,
+          timeout: 1000
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -49,11 +53,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
   describe "UDP Integration Tests" do
     test "creates UDP socket successfully" do
-      provider = Providers.new_udp_provider(
-        name: "test_udp",
-        host: "8.8.8.8",
-        port: 53
-      )
+      provider =
+        Providers.new_udp_provider(
+          name: "test_udp",
+          host: "8.8.8.8",
+          port: 53
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -64,11 +69,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
     end
 
     test "handles UDP send errors" do
-      provider = Providers.new_udp_provider(
-        name: "test_udp",
-        host: "invalid.host.example.com",
-        port: 53
-      )
+      provider =
+        Providers.new_udp_provider(
+          name: "test_udp",
+          host: "invalid.host.example.com",
+          port: 53
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -79,17 +85,19 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
   describe "Connection Pool Integration" do
     test "manages multiple connections" do
-      tcp_provider = Providers.new_tcp_provider(
-        name: "tcp_provider",
-        host: "localhost",
-        port: 8080
-      )
+      tcp_provider =
+        Providers.new_tcp_provider(
+          name: "tcp_provider",
+          host: "localhost",
+          port: 8080
+        )
 
-      udp_provider = Providers.new_udp_provider(
-        name: "udp_provider",
-        host: "localhost",
-        port: 8081
-      )
+      udp_provider =
+        Providers.new_udp_provider(
+          name: "udp_provider",
+          host: "localhost",
+          port: 8081
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(tcp_provider)
       {:ok, []} = TcpUdp.register_tool_provider(udp_provider)
@@ -103,11 +111,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
     end
 
     test "handles provider deregistration" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
       assert :ok = TcpUdp.deregister_tool_provider(provider)
@@ -120,11 +129,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
   describe "Streaming Integration" do
     test "handles tool stream calls" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -133,11 +143,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
     end
 
     test "handles UDP stream calls" do
-      provider = Providers.new_udp_provider(
-        name: "test_udp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_udp_provider(
+          name: "test_udp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -148,11 +159,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
   describe "Error Recovery Integration" do
     test "retries failed operations" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -165,11 +177,12 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
       # Create a transport with very low retry settings
       {:ok, pid} = TcpUdp.start_link()
 
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -180,5 +193,3 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
     end
   end
 end
-
-

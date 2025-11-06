@@ -33,8 +33,10 @@ defmodule ExUtcp.Search.Filters do
   """
   @spec filter_by_providers([Types.tool()], [String.t()]) :: [Types.tool()]
   def filter_by_providers(tools, []), do: tools
+
   def filter_by_providers(tools, provider_names) do
     provider_set = MapSet.new(provider_names)
+
     Enum.filter(tools, fn tool ->
       MapSet.member?(provider_set, tool.provider_name)
     end)
@@ -45,6 +47,7 @@ defmodule ExUtcp.Search.Filters do
   """
   @spec filter_by_transports([Types.tool()], [atom()]) :: [Types.tool()]
   def filter_by_transports(tools, []), do: tools
+
   def filter_by_transports(tools, transport_types) do
     transport_set = MapSet.new(transport_types)
 
@@ -62,6 +65,7 @@ defmodule ExUtcp.Search.Filters do
   """
   @spec filter_by_tags([Types.tool()], [String.t()]) :: [Types.tool()]
   def filter_by_tags(tools, []), do: tools
+
   def filter_by_tags(tools, tags) do
     tag_set = MapSet.new(tags)
 
@@ -74,10 +78,14 @@ defmodule ExUtcp.Search.Filters do
   @doc """
   Filters providers by names.
   """
-  @spec filter_providers_by_names([Types.provider_config()], [String.t()]) :: [Types.provider_config()]
+  @spec filter_providers_by_names([Types.provider_config()], [String.t()]) :: [
+          Types.provider_config()
+        ]
   def filter_providers_by_names(providers, []), do: providers
+
   def filter_providers_by_names(providers, names) do
     name_set = MapSet.new(names)
+
     Enum.filter(providers, fn provider ->
       MapSet.member?(name_set, provider.name)
     end)
@@ -86,10 +94,14 @@ defmodule ExUtcp.Search.Filters do
   @doc """
   Filters providers by transport types.
   """
-  @spec filter_providers_by_transports([Types.provider_config()], [atom()]) :: [Types.provider_config()]
+  @spec filter_providers_by_transports([Types.provider_config()], [atom()]) :: [
+          Types.provider_config()
+        ]
   def filter_providers_by_transports(providers, []), do: providers
+
   def filter_providers_by_transports(providers, transport_types) do
     transport_set = MapSet.new(transport_types)
+
     Enum.filter(providers, fn provider ->
       MapSet.member?(transport_set, provider.type)
     end)
@@ -138,15 +150,32 @@ defmodule ExUtcp.Search.Filters do
 
   defp infer_transport_from_provider(provider_name) do
     cond do
-      String.contains?(provider_name, "http") -> :http
-      String.contains?(provider_name, "websocket") or String.contains?(provider_name, "ws") -> :websocket
-      String.contains?(provider_name, "grpc") -> :grpc
-      String.contains?(provider_name, "graphql") -> :graphql
-      String.contains?(provider_name, "mcp") -> :mcp
-      String.contains?(provider_name, "tcp") -> :tcp
-      String.contains?(provider_name, "udp") -> :udp
-      String.contains?(provider_name, "cli") -> :cli
-      true -> :unknown
+      String.contains?(provider_name, "http") ->
+        :http
+
+      String.contains?(provider_name, "websocket") or String.contains?(provider_name, "ws") ->
+        :websocket
+
+      String.contains?(provider_name, "grpc") ->
+        :grpc
+
+      String.contains?(provider_name, "graphql") ->
+        :graphql
+
+      String.contains?(provider_name, "mcp") ->
+        :mcp
+
+      String.contains?(provider_name, "tcp") ->
+        :tcp
+
+      String.contains?(provider_name, "udp") ->
+        :udp
+
+      String.contains?(provider_name, "cli") ->
+        :cli
+
+      true ->
+        :unknown
     end
   end
 
@@ -155,10 +184,11 @@ defmodule ExUtcp.Search.Filters do
     tags = []
 
     # Check if tool definition has explicit tags
-    tags = case tool.definition do
-      %{tags: explicit_tags} when is_list(explicit_tags) -> explicit_tags
-      _ -> tags
-    end
+    tags =
+      case tool.definition do
+        %{tags: explicit_tags} when is_list(explicit_tags) -> explicit_tags
+        _ -> tags
+      end
 
     # Infer tags from description if no explicit tags
     if Enum.empty?(tags) do
@@ -173,19 +203,21 @@ defmodule ExUtcp.Search.Filters do
     capabilities = []
 
     # Infer capabilities from parameters and responses
-    capabilities = if Map.has_key?(tool.definition, :parameters) do
-      param_capabilities = infer_capabilities_from_parameters(tool.definition.parameters)
-      capabilities ++ param_capabilities
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(tool.definition, :parameters) do
+        param_capabilities = infer_capabilities_from_parameters(tool.definition.parameters)
+        capabilities ++ param_capabilities
+      else
+        capabilities
+      end
 
-    capabilities = if Map.has_key?(tool.definition, :response) do
-      response_capabilities = infer_capabilities_from_response(tool.definition.response)
-      capabilities ++ response_capabilities
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(tool.definition, :response) do
+        response_capabilities = infer_capabilities_from_response(tool.definition.response)
+        capabilities ++ response_capabilities
+      else
+        capabilities
+      end
 
     capabilities
   end
@@ -198,7 +230,9 @@ defmodule ExUtcp.Search.Filters do
           Map.get(param_def, "type", "unknown")
         end)
         |> Enum.uniq()
-      _ -> []
+
+      _ ->
+        []
     end
   end
 
@@ -210,7 +244,9 @@ defmodule ExUtcp.Search.Filters do
           Map.get(field_def, "type", "unknown")
         end)
         |> Enum.uniq()
-      _ -> []
+
+      _ ->
+        []
     end
   end
 
@@ -220,35 +256,40 @@ defmodule ExUtcp.Search.Filters do
 
     tags = []
 
-    tags = if String.contains?(description_lower, ["file", "document", "pdf", "image"]) do
-      ["file-processing" | tags]
-    else
-      tags
-    end
+    tags =
+      if String.contains?(description_lower, ["file", "document", "pdf", "image"]) do
+        ["file-processing" | tags]
+      else
+        tags
+      end
 
-    tags = if String.contains?(description_lower, ["api", "http", "request", "endpoint"]) do
-      ["api" | tags]
-    else
-      tags
-    end
+    tags =
+      if String.contains?(description_lower, ["api", "http", "request", "endpoint"]) do
+        ["api" | tags]
+      else
+        tags
+      end
 
-    tags = if String.contains?(description_lower, ["data", "database", "query", "sql"]) do
-      ["data" | tags]
-    else
-      tags
-    end
+    tags =
+      if String.contains?(description_lower, ["data", "database", "query", "sql"]) do
+        ["data" | tags]
+      else
+        tags
+      end
 
-    tags = if String.contains?(description_lower, ["text", "string", "parse", "format"]) do
-      ["text-processing" | tags]
-    else
-      tags
-    end
+    tags =
+      if String.contains?(description_lower, ["text", "string", "parse", "format"]) do
+        ["text-processing" | tags]
+      else
+        tags
+      end
 
-    tags = if String.contains?(description_lower, ["network", "connection", "socket", "tcp", "udp"]) do
-      ["network" | tags]
-    else
-      tags
-    end
+    tags =
+      if String.contains?(description_lower, ["network", "connection", "socket", "tcp", "udp"]) do
+        ["network" | tags]
+      else
+        tags
+      end
 
     tags
   end
@@ -259,23 +300,26 @@ defmodule ExUtcp.Search.Filters do
     capabilities = []
 
     # Infer capabilities from parameter names and types
-    capabilities = if Map.has_key?(properties, "file") or Map.has_key?(properties, "path") do
-      ["file-handling" | capabilities]
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(properties, "file") or Map.has_key?(properties, "path") do
+        ["file-handling" | capabilities]
+      else
+        capabilities
+      end
 
-    capabilities = if Map.has_key?(properties, "url") or Map.has_key?(properties, "endpoint") do
-      ["web-requests" | capabilities]
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(properties, "url") or Map.has_key?(properties, "endpoint") do
+        ["web-requests" | capabilities]
+      else
+        capabilities
+      end
 
-    capabilities = if Map.has_key?(properties, "query") or Map.has_key?(properties, "search") do
-      ["search" | capabilities]
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(properties, "query") or Map.has_key?(properties, "search") do
+        ["search" | capabilities]
+      else
+        capabilities
+      end
 
     capabilities
   end
@@ -288,17 +332,19 @@ defmodule ExUtcp.Search.Filters do
     capabilities = []
 
     # Infer capabilities from response structure
-    capabilities = if Map.has_key?(properties, "data") or Map.has_key?(properties, "result") do
-      ["data-retrieval" | capabilities]
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(properties, "data") or Map.has_key?(properties, "result") do
+        ["data-retrieval" | capabilities]
+      else
+        capabilities
+      end
 
-    capabilities = if Map.has_key?(properties, "status") or Map.has_key?(properties, "success") do
-      ["status-reporting" | capabilities]
-    else
-      capabilities
-    end
+    capabilities =
+      if Map.has_key?(properties, "status") or Map.has_key?(properties, "success") do
+        ["status-reporting" | capabilities]
+      else
+        capabilities
+      end
 
     capabilities
   end

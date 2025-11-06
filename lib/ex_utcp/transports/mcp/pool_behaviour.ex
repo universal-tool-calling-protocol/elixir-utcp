@@ -8,4 +8,3 @@ defmodule ExUtcp.Transports.Mcp.PoolBehaviour do
   @callback close_all_connections() :: :ok
   @callback stats() :: map()
 end
-

@@ -55,7 +55,7 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
       |> Enum.reject(&(&1 == ""))
       |> Enum.map(&normalize_path/1)
 
-    if length(validated_paths) == 0 do
+    if Enum.empty?(validated_paths) do
       {:error, "No valid paths provided"}
     else
       {:ok, validated_paths}
@@ -70,10 +70,10 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
     path_parts = [origin | elements]
     path = Enum.join(path_parts, "/")
 
-    if target != "" do
-      "#{path}[#{target}]"
-    else
+    if target == "" do
       path
+    else
+      "#{path}[#{target}]"
     end
   end
 
@@ -82,24 +82,24 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
   """
   @spec parse_path(String.t()) :: {:ok, map()} | {:error, term()}
   def parse_path(path) do
-    try do
-      # Simple path parsing - in a real implementation, this would be more sophisticated
-      parts = String.split(path, "/", trim: true)
+    # Simple path parsing - in a real implementation, this would be more sophisticated
+    parts = String.split(path, "/", trim: true)
 
-      case parts do
-        [origin | elements] ->
-          {:ok, %{
-            origin: origin,
-            elements: elements,
-            full_path: path
-          }}
-        [] ->
-          {:error, "Empty path"}
-      end
-    rescue
-      error ->
-        {:error, "Failed to parse path: #{inspect(error)}"}
+    case parts do
+      [origin | elements] ->
+        {:ok,
+         %{
+           origin: origin,
+           elements: elements,
+           full_path: path
+         }}
+
+      [] ->
+        {:error, "Empty path"}
     end
+  rescue
+    error ->
+      {:error, "Failed to parse path: #{inspect(error)}"}
   end
 
   # Private functions
@@ -125,15 +125,16 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
   end
 
   defp build_subscribe_request(paths, opts) do
-    subscription_list = Enum.map(paths, fn path ->
-      %{
-        "path" => %{"elem" => String.split(path, "/", trim: true)},
-        "mode" => Keyword.get(opts, :mode, "ON_CHANGE"),
-        "sample_interval" => Keyword.get(opts, :sample_interval, 0),
-        "suppress_redundant" => Keyword.get(opts, :suppress_redundant, false),
-        "heartbeat_interval" => Keyword.get(opts, :heartbeat_interval, 0)
-      }
-    end)
+    subscription_list =
+      Enum.map(paths, fn path ->
+        %{
+          "path" => %{"elem" => String.split(path, "/", trim: true)},
+          "mode" => Keyword.get(opts, :mode, "ON_CHANGE"),
+          "sample_interval" => Keyword.get(opts, :sample_interval, 0),
+          "suppress_redundant" => Keyword.get(opts, :suppress_redundant, false),
+          "heartbeat_interval" => Keyword.get(opts, :heartbeat_interval, 0)
+        }
+      end)
 
     %{
       "type" => "SubscribeRequest",
@@ -162,19 +163,34 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
     case operation do
       :get ->
         ExUtcp.Transports.Grpc.Connection.call_tool(connection_pid, "gnmi.get", request, timeout)
+
       :set ->
         ExUtcp.Transports.Grpc.Connection.call_tool(connection_pid, "gnmi.set", request, timeout)
+
       :subscribe ->
-        ExUtcp.Transports.Grpc.Connection.call_tool_stream(connection_pid, "gnmi.subscribe", request, timeout)
+        ExUtcp.Transports.Grpc.Connection.call_tool_stream(
+          connection_pid,
+          "gnmi.subscribe",
+          request,
+          timeout
+        )
+
       :capabilities ->
-        ExUtcp.Transports.Grpc.Connection.call_tool(connection_pid, "gnmi.capabilities", request, timeout)
+        ExUtcp.Transports.Grpc.Connection.call_tool(
+          connection_pid,
+          "gnmi.capabilities",
+          request,
+          timeout
+        )
     end
   end
 
   defp normalize_path(path) do
     path
     |> String.trim()
-    |> String.replace(~r/\/+/, "/")  # Replace multiple slashes with single slash
-    |> String.replace_leading("/", "")  # Remove leading slash
+    # Replace multiple slashes with single slash
+    |> String.replace(~r/\/+/, "/")
+    # Remove leading slash
+    |> String.replace_leading("/", "")
   end
 end

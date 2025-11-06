@@ -1,8 +1,9 @@
 defmodule ExUtcp.MonitoringTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   alias ExUtcp.Monitoring
+
+  @moduletag :unit
 
   describe "Monitoring System" do
     test "starts and stops monitoring system" do
@@ -12,42 +13,46 @@ defmodule ExUtcp.MonitoringTest do
 
     test "emits tool call events" do
       # Test that telemetry events are emitted without errors
-      assert :ok = Monitoring.emit_tool_call_event(
-        "test_tool",
-        "test_provider",
-        %{"arg1" => "value1"},
-        100,
-        :success,
-        %{"result" => "success"}
-      )
+      assert :ok =
+               Monitoring.emit_tool_call_event(
+                 "test_tool",
+                 "test_provider",
+                 %{"arg1" => "value1"},
+                 100,
+                 :success,
+                 %{"result" => "success"}
+               )
     end
 
     test "emits search events" do
-      assert :ok = Monitoring.emit_search_event(
-        "test query",
-        :fuzzy,
-        %{providers: ["test"]},
-        50,
-        5
-      )
+      assert :ok =
+               Monitoring.emit_search_event(
+                 "test query",
+                 :fuzzy,
+                 %{providers: ["test"]},
+                 50,
+                 5
+               )
     end
 
     test "emits provider events" do
-      assert :ok = Monitoring.emit_provider_event(
-        "test_provider",
-        :http,
-        :register,
-        3
-      )
+      assert :ok =
+               Monitoring.emit_provider_event(
+                 "test_provider",
+                 :http,
+                 :register,
+                 3
+               )
     end
 
     test "emits connection events" do
-      assert :ok = Monitoring.emit_connection_event(
-        "test_provider",
-        :websocket,
-        :connect,
-        200
-      )
+      assert :ok =
+               Monitoring.emit_connection_event(
+                 "test_provider",
+                 :websocket,
+                 :connect,
+                 200
+               )
     end
 
     test "gets system metrics" do
@@ -81,4 +86,3 @@ defmodule ExUtcp.MonitoringTest do
     end
   end
 end
-

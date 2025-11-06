@@ -1,8 +1,9 @@
 defmodule ExUtcp.Monitoring.MetricsTest do
   use ExUnit.Case, async: false
-  @moduletag :unit
 
   alias ExUtcp.Monitoring.Metrics
+
+  @moduletag :unit
 
   describe "Metrics Collection" do
     setup do

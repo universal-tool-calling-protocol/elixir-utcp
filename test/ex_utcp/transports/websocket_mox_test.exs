@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.WebSocketMoxTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.WebSocket.Testable
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -13,9 +14,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
   describe "WebSocket Transport with Mocks" do
     setup do
       # Create testable transport with mocked dependencies
-      transport = Testable.new(
-        connection_module: ExUtcp.Transports.WebSocket.ConnectionMock
-      )
+      transport = Testable.new(connection_module: ExUtcp.Transports.WebSocket.ConnectionMock)
 
       {:ok, transport: transport}
     end
@@ -56,7 +55,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
 
       # Test with invalid provider type
       assert {:error, "WebSocket transport can only be used with WebSocket providers"} =
-        Testable.register_tool_provider(invalid_provider)
+               Testable.register_tool_provider(invalid_provider)
     end
 
     test "registers tool provider successfully", %{transport: transport} do
@@ -110,12 +109,15 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return tool call result
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
+                                                                        _tool,
+                                                                        _args,
+                                                                        _opts ->
         {:ok, %{"result" => "success"}}
       end)
 
       assert {:ok, %{"result" => "success"}} =
-        Testable.call_tool(transport, "test_tool", %{}, provider)
+               Testable.call_tool(transport, "test_tool", %{}, provider)
     end
 
     test "handles tool call errors", %{transport: transport} do
@@ -128,7 +130,10 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn,
+                                                                           _tool,
+                                                                           _args,
+                                                                           _opts ->
         {:error, "Tool call failed"}
       end)
 
@@ -145,7 +150,10 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return streaming result
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool_stream, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool_stream, fn _conn,
+                                                                               _tool,
+                                                                               _args,
+                                                                               _opts ->
         {:ok, Stream.map([%{"chunk" => "data"}], & &1)}
       end)
 
@@ -163,7 +171,10 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn,
+                                                                           _tool,
+                                                                           _args,
+                                                                           _opts ->
         {:error, "Connection lost"}
       end)
 
@@ -180,11 +191,15 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to call tools
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
+                                                                        _tool,
+                                                                        _args,
+                                                                        _opts ->
         {:ok, %{"type" => "response", "data" => "test"}}
       end)
 
-      assert {:ok, %{"type" => "response", "data" => "test"}} = Testable.call_tool(transport, "test_tool", %{}, provider)
+      assert {:ok, %{"type" => "response", "data" => "test"}} =
+               Testable.call_tool(transport, "test_tool", %{}, provider)
     end
 
     test "handles WebSocket message receiving", %{transport: transport} do
@@ -197,12 +212,15 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return messages
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
+      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
+                                                                        _tool,
+                                                                        _args,
+                                                                        _opts ->
         {:ok, %{"type" => "response", "data" => "test"}}
       end)
 
       assert {:ok, %{"type" => "response", "data" => "test"}} =
-        Testable.call_tool(transport, "test_tool", %{}, provider)
+               Testable.call_tool(transport, "test_tool", %{}, provider)
     end
 
     test "closes transport successfully", %{transport: transport} do

@@ -10,7 +10,7 @@ defmodule ExUtcp.MixProject do
       deps: deps(),
       description: description(),
       package: package(),
-      source_url: "https://github.com/thanos/ex_utcp",
+      source_url: "https://github.com/universal-tool-calling-protocol/elixir-utcp",
       docs: [
         main: "ExUtcp",
         extras: ["README.md"]
@@ -64,6 +64,7 @@ defmodule ExUtcp.MixProject do
       # Testing
       {:ex_doc, "~> 0.30", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:quokka, "~> 2.11", only: [:dev, :test], runtime: false},
       {:mox, "~> 1.0", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
@@ -79,7 +80,7 @@ defmodule ExUtcp.MixProject do
       maintainers: ["Thanos Vassilakis"],
       licenses: ["MPL-2.0"],
       links: %{
-        "GitHub" => "https://github.com/thanos/ex_utcp",
+        "GitHub" => "https://github.com/universal-tool-calling-protocol/elixir-utcp",
         "Documentation" => "https://hexdocs.pm/ex_utcp"
       }
     ]

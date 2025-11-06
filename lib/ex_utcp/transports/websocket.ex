@@ -9,10 +9,10 @@ defmodule ExUtcp.Transports.WebSocket do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  require Logger
-
   alias ExUtcp.Auth
   alias ExUtcp.Transports.WebSocket.Connection
+
+  require Logger
 
   defstruct [
     :logger,
@@ -148,42 +148,57 @@ defmodule ExUtcp.Transports.WebSocket do
   defp discover_tools(provider) do
     retry_config = %{max_retries: 3, retry_delay: 1000, backoff_multiplier: 2}
 
-    with_retry(fn ->
-      with {:ok, conn} <- get_or_create_connection(provider),
-           {:ok, tools} <- request_manual(conn, provider) do
-        {:ok, tools}
-      else
-        {:error, reason} -> {:error, "Failed to discover tools: #{inspect(reason)}"}
-      end
-    end, retry_config)
+    with_retry(
+      fn ->
+        with {:ok, conn} <- get_or_create_connection(provider),
+             {:ok, tools} <- request_manual(conn, provider) do
+          {:ok, tools}
+        else
+          {:error, reason} -> {:error, "Failed to discover tools: #{inspect(reason)}"}
+        end
+      end,
+      retry_config
+    )
   end
 
   defp execute_tool_call(tool_name, args, provider) do
     retry_config = %{max_retries: 3, retry_delay: 1000, backoff_multiplier: 2}
 
-    with_retry(fn ->
-      with {:ok, conn} <- get_or_create_connection(provider),
-           {:ok, result} <- send_tool_request(conn, tool_name, args, provider) do
-        {:ok, result}
-      else
-        {:error, reason} -> {:error, "Failed to execute tool: #{inspect(reason)}"}
-      end
-    end, retry_config)
+    with_retry(
+      fn ->
+        with {:ok, conn} <- get_or_create_connection(provider),
+             {:ok, result} <- send_tool_request(conn, tool_name, args, provider) do
+          {:ok, result}
+        else
+          {:error, reason} -> {:error, "Failed to execute tool: #{inspect(reason)}"}
+        end
+      end,
+      retry_config
+    )
   end
 
   defp execute_tool_stream(tool_name, args, provider) do
     retry_config = %{max_retries: 3, retry_delay: 1000, backoff_multiplier: 2}
 
-    with_retry(fn ->
-      with {:ok, conn} <- get_or_create_connection(provider),
-           {:ok, stream_result} <- send_tool_stream_request(conn, tool_name, args, provider) do
-        # Enhance the stream with proper WebSocket streaming metadata
-        enhanced_stream = create_websocket_stream(stream_result, tool_name, provider)
-        {:ok, %{type: :stream, data: enhanced_stream, metadata: %{"transport" => "websocket", "tool" => tool_name, "protocol" => "ws"}}}
-      else
-        {:error, reason} -> {:error, "Failed to execute tool stream: #{inspect(reason)}"}
-      end
-    end, retry_config)
+    with_retry(
+      fn ->
+        with {:ok, conn} <- get_or_create_connection(provider),
+             {:ok, stream_result} <- send_tool_stream_request(conn, tool_name, args, provider) do
+          # Enhance the stream with proper WebSocket streaming metadata
+          enhanced_stream = create_websocket_stream(stream_result, tool_name, provider)
+
+          {:ok,
+           %{
+             type: :stream,
+             data: enhanced_stream,
+             metadata: %{"transport" => "websocket", "tool" => tool_name, "protocol" => "ws"}
+           }}
+        else
+          {:error, reason} -> {:error, "Failed to execute tool stream: #{inspect(reason)}"}
+        end
+      end,
+      retry_config
+    )
   end
 
   defp create_websocket_stream(stream, tool_name, provider) do
@@ -192,8 +207,10 @@ defmodule ExUtcp.Transports.WebSocket do
       case chunk do
         %{"type" => "stream_end"} ->
           %{type: :end, metadata: %{"sequence" => index, "tool" => tool_name}}
+
         %{"type" => "error", "message" => error} ->
           %{type: :error, error: error, code: 500, metadata: %{"sequence" => index}}
+
         data ->
           %{
             data: data,
@@ -229,9 +246,11 @@ defmodule ExUtcp.Transports.WebSocket do
             new_pool = Map.put(state.connection_pool, connection_key, conn)
             new_state = %{state | connection_pool: new_pool}
             {:ok, conn, new_state}
+
           {:error, reason} ->
             {:error, reason}
         end
+
       conn ->
         # Use existing connection
         {:ok, conn, state}
@@ -243,11 +262,12 @@ defmodule ExUtcp.Transports.WebSocket do
     headers = Auth.apply_to_headers(provider.auth, headers)
 
     # Add WebSocket protocol if specified
-    headers = if provider.protocol do
-      Map.put(headers, "Sec-WebSocket-Protocol", provider.protocol)
-    else
-      headers
-    end
+    headers =
+      if provider.protocol do
+        Map.put(headers, "Sec-WebSocket-Protocol", provider.protocol)
+      else
+        headers
+      end
 
     # Convert headers to the format expected by websockex
     ws_headers = Enum.map(headers, fn {k, v} -> {String.to_atom(k), v} end)
@@ -285,7 +305,9 @@ defmodule ExUtcp.Transports.WebSocket do
           {:ok, response} -> parse_manual_response(response, provider)
           {:error, reason} -> {:error, reason}
         end
-      {:error, reason} -> {:error, "Failed to send manual request: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to send manual request: #{inspect(reason)}"}
     end
   end
 
@@ -298,9 +320,13 @@ defmodule ExUtcp.Transports.WebSocket do
               {:ok, response} -> parse_tool_response(response)
               {:error, reason} -> {:error, reason}
             end
-          {:error, reason} -> {:error, "Failed to send tool request: #{inspect(reason)}"}
+
+          {:error, reason} ->
+            {:error, "Failed to send tool request: #{inspect(reason)}"}
         end
-      {:error, reason} -> {:error, "Failed to encode arguments: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to encode arguments: #{inspect(reason)}"}
     end
   end
 
@@ -311,9 +337,13 @@ defmodule ExUtcp.Transports.WebSocket do
           :ok ->
             # For streaming, we collect all messages until connection closes
             collect_stream_messages(conn, [])
-          {:error, reason} -> {:error, "Failed to send tool request: #{inspect(reason)}"}
+
+          {:error, reason} ->
+            {:error, "Failed to send tool request: #{inspect(reason)}"}
         end
-      {:error, reason} -> {:error, "Failed to encode arguments: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to encode arguments: #{inspect(reason)}"}
     end
   end
 
@@ -326,16 +356,18 @@ defmodule ExUtcp.Transports.WebSocket do
         # No messages available, wait a bit and try again
         Process.sleep(100)
         collect_stream_messages(conn, acc)
+
       msgs ->
         # Process all messages
-        decoded_messages = Enum.map(msgs, fn msg ->
-          case Jason.decode(msg) do
-            {:ok, decoded} -> decoded
-            {:error, _} -> msg
-          end
-        end)
+        decoded_messages =
+          Enum.map(msgs, fn msg ->
+            case Jason.decode(msg) do
+              {:ok, decoded} -> decoded
+              {:error, _} -> msg
+            end
+          end)
 
-        new_acc = Enum.reverse(decoded_messages) ++ acc
+        new_acc = Enum.reverse(decoded_messages, acc)
 
         # Check if we should continue collecting or return
         if length(msgs) < 10 do
@@ -355,9 +387,11 @@ defmodule ExUtcp.Transports.WebSocket do
           %{"tools" => tools} when is_list(tools) ->
             normalized_tools = Enum.map(tools, &normalize_tool(&1, provider))
             {:ok, normalized_tools}
+
           _ ->
             {:ok, []}
         end
+
       {:error, reason} ->
         {:error, "Failed to parse manual response: #{inspect(reason)}"}
     end
@@ -371,7 +405,7 @@ defmodule ExUtcp.Transports.WebSocket do
   end
 
   defp normalize_tool(tool_data, provider) do
-    ExUtcp.Tools.new_tool([
+    ExUtcp.Tools.new_tool(
       name: Map.get(tool_data, "name", ""),
       description: Map.get(tool_data, "description", ""),
       inputs: parse_schema(Map.get(tool_data, "inputs", %{})),
@@ -379,11 +413,11 @@ defmodule ExUtcp.Transports.WebSocket do
       tags: Map.get(tool_data, "tags", []),
       average_response_size: Map.get(tool_data, "average_response_size"),
       provider: provider
-    ])
+    )
   end
 
   defp parse_schema(schema_data) do
-    ExUtcp.Tools.new_schema([
+    ExUtcp.Tools.new_schema(
       type: Map.get(schema_data, "type", "object"),
       properties: Map.get(schema_data, "properties", %{}),
       required: Map.get(schema_data, "required", []),
@@ -394,7 +428,7 @@ defmodule ExUtcp.Transports.WebSocket do
       minimum: Map.get(schema_data, "minimum"),
       maximum: Map.get(schema_data, "maximum"),
       format: Map.get(schema_data, "format", "")
-    ])
+    )
   end
 
   defp close_connection(provider) do
@@ -405,7 +439,9 @@ defmodule ExUtcp.Transports.WebSocket do
     connection_key = build_connection_key(provider)
 
     case Map.get(state.connection_pool, connection_key) do
-      nil -> state
+      nil ->
+        state
+
       conn ->
         Connection.close(conn)
         new_pool = Map.delete(state.connection_pool, connection_key)
@@ -417,14 +453,17 @@ defmodule ExUtcp.Transports.WebSocket do
     Enum.each(state.connection_pool, fn {_key, conn} ->
       Connection.close(conn)
     end)
+
     %{state | connection_pool: %{}}
   end
 
   defp remove_connection_from_pool(conn, state) do
     # Find and remove the connection from the pool
-    new_pool = Enum.reject(state.connection_pool, fn {_key, pool_conn} ->
-      pool_conn == conn
-    end) |> Enum.into(%{})
+    new_pool =
+      Enum.reject(state.connection_pool, fn {_key, pool_conn} ->
+        pool_conn == conn
+      end)
+      |> Map.new()
 
     %{state | connection_pool: new_pool}
   end
@@ -436,12 +475,16 @@ defmodule ExUtcp.Transports.WebSocket do
 
   defp with_retry(fun, retry_config, attempt) do
     case fun.() do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, _reason} when attempt < retry_config.max_retries ->
         delay = retry_config.retry_delay * :math.pow(retry_config.backoff_multiplier, attempt)
         :timer.sleep(round(delay))
         with_retry(fun, retry_config, attempt + 1)
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

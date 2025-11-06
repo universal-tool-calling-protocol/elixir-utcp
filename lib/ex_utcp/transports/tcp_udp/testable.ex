@@ -74,14 +74,15 @@ defmodule ExUtcp.Transports.TcpUdp.Testable do
   """
   def mock_tool_stream_response(tool_name, args, stream_data) do
     # This would be used by the mock modules to return predefined stream responses
-    stream = Stream.map(stream_data, fn data ->
-      %{
-        type: :stream,
-        data: data,
-        tool: tool_name,
-        timestamp: System.monotonic_time(:millisecond)
-      }
-    end)
+    stream =
+      Stream.map(stream_data, fn data ->
+        %{
+          type: :stream,
+          data: data,
+          tool: tool_name,
+          timestamp: System.monotonic_time(:millisecond)
+        }
+      end)
 
     %{
       tool: tool_name,

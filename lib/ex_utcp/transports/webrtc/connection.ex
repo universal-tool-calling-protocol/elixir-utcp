@@ -10,10 +10,11 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   """
 
   use GenServer
-  require Logger
 
-  alias ExWebRTC.{PeerConnection, DataChannel, ICECandidate, SessionDescription}
   alias ExUtcp.Transports.WebRTC.Signaling
+  alias ExWebRTC.{PeerConnection, DataChannel, ICECandidate, SessionDescription}
+
+  require Logger
 
   @enforce_keys [:provider, :signaling_server, :ice_servers]
   defstruct [
@@ -30,17 +31,17 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   ]
 
   @type t :: %__MODULE__{
-    provider: map(),
-    signaling_server: String.t(),
-    ice_servers: [map()],
-    peer_connection: pid() | nil,
-    data_channel: pid() | nil,
-    signaling_pid: pid() | nil,
-    connection_state: atom(),
-    ice_connection_state: atom(),
-    pending_calls: %{String.t() => pid()},
-    call_id_counter: integer()
-  }
+          provider: map(),
+          signaling_server: String.t(),
+          ice_servers: [map()],
+          peer_connection: pid() | nil,
+          data_channel: pid() | nil,
+          signaling_pid: pid() | nil,
+          connection_state: atom(),
+          ice_connection_state: atom(),
+          pending_calls: %{String.t() => pid()},
+          call_id_counter: integer()
+        }
 
   @doc """
   Starts a new WebRTC connection.
@@ -61,7 +62,8 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   @doc """
   Calls a tool stream over the WebRTC data channel.
   """
-  @spec call_tool_stream(pid(), String.t(), map(), integer()) :: {:ok, Stream.t()} | {:error, term()}
+  @spec call_tool_stream(pid(), String.t(), map(), integer()) ::
+          {:ok, Stream.t()} | {:error, term()}
   def call_tool_stream(pid, tool_name, args, timeout \\ 30_000) do
     GenServer.call(pid, {:call_tool_stream, tool_name, args}, timeout)
   end
@@ -132,11 +134,15 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
         :ok ->
           # Store pending call
           new_pending_calls = Map.put(state.pending_calls, call_id, from)
-          new_state = %{state |
-            pending_calls: new_pending_calls,
-            call_id_counter: state.call_id_counter + 1
+
+          new_state = %{
+            state
+            | pending_calls: new_pending_calls,
+              call_id_counter: state.call_id_counter + 1
           }
+
           {:noreply, new_state}
+
         {:error, reason} ->
           {:reply, {:error, "Failed to send message: #{inspect(reason)}"}, state}
       end
@@ -172,16 +178,18 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
 
     try do
       # Create peer connection
-      {:ok, pc} = PeerConnection.start_link(
-        ice_servers: state.ice_servers,
-        ice_transport_policy: :all
-      )
+      {:ok, pc} =
+        PeerConnection.start_link(
+          ice_servers: state.ice_servers,
+          ice_transport_policy: :all
+        )
 
       # Create data channel
-      {:ok, dc} = PeerConnection.create_data_channel(pc, "utcp_channel", %{
-        ordered: true,
-        max_retransmits: 3
-      })
+      {:ok, dc} =
+        PeerConnection.create_data_channel(pc, "utcp_channel", %{
+          ordered: true,
+          max_retransmits: 3
+        })
 
       # Connect to signaling server
       {:ok, signaling_pid} = Signaling.start_link(state.signaling_server, self())
@@ -193,11 +201,12 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
       # Send offer through signaling
       :ok = Signaling.send_offer(signaling_pid, offer, state.provider.peer_id)
 
-      new_state = %{state |
-        peer_connection: pc,
-        data_channel: dc,
-        signaling_pid: signaling_pid,
-        connection_state: :connecting
+      new_state = %{
+        state
+        | peer_connection: pc,
+          data_channel: dc,
+          signaling_pid: signaling_pid,
+          connection_state: :connecting
       }
 
       {:noreply, new_state}
@@ -215,6 +224,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
       :ok ->
         Logger.info("Remote description set successfully")
         {:noreply, state}
+
       {:error, reason} ->
         Logger.error("Failed to set remote description: #{inspect(reason)}")
         {:noreply, %{state | connection_state: :failed}}
@@ -228,8 +238,9 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
       :ok ->
         Logger.debug("ICE candidate added successfully")
         {:noreply, state}
+
       {:error, reason} ->
-        Logger.warn("Failed to add ICE candidate: #{inspect(reason)}")
+        Logger.warning("Failed to add ICE candidate: #{inspect(reason)}")
         {:noreply, state}
     end
   end
@@ -238,9 +249,11 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   def handle_info({:ex_webrtc, _pc, {:ice_candidate, candidate}}, state) do
     # Local ICE candidate generated, send to remote peer
     case Signaling.send_ice_candidate(state.signaling_pid, candidate, state.provider.peer_id) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, reason} ->
-        Logger.warn("Failed to send ICE candidate: #{inspect(reason)}")
+        Logger.warning("Failed to send ICE candidate: #{inspect(reason)}")
     end
 
     {:noreply, state}
@@ -264,6 +277,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
     case Jason.decode(data) do
       {:ok, message} ->
         handle_data_channel_message(message, state)
+
       {:error, reason} ->
         Logger.error("Failed to decode data channel message: #{inspect(reason)}")
         {:noreply, state}
@@ -290,12 +304,16 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
 
   # Private helper functions
 
-  defp handle_data_channel_message(%{"id" => call_id, "type" => "response", "result" => result}, state) do
+  defp handle_data_channel_message(
+         %{"id" => call_id, "type" => "response", "result" => result},
+         state
+       ) do
     # Handle tool call response
     case Map.get(state.pending_calls, call_id) do
       nil ->
-        Logger.warn("Received response for unknown call ID: #{call_id}")
+        Logger.warning("Received response for unknown call ID: #{call_id}")
         {:noreply, state}
+
       from ->
         GenServer.reply(from, {:ok, result})
         new_pending_calls = Map.delete(state.pending_calls, call_id)
@@ -307,8 +325,9 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
     # Handle tool call error
     case Map.get(state.pending_calls, call_id) do
       nil ->
-        Logger.warn("Received error for unknown call ID: #{call_id}")
+        Logger.warning("Received error for unknown call ID: #{call_id}")
         {:noreply, state}
+
       from ->
         GenServer.reply(from, {:error, error})
         new_pending_calls = Map.delete(state.pending_calls, call_id)
@@ -325,6 +344,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
     case Jason.encode(message) do
       {:ok, json} ->
         DataChannel.send_data(data_channel, json)
+
       {:error, reason} ->
         {:error, "Failed to encode message: #{inspect(reason)}"}
     end
@@ -337,11 +357,12 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
       fn ->
         # Initialize: send streaming request
         message = %{
-          id: "stream_#{:rand.uniform(1000000)}",
+          id: "stream_#{:rand.uniform(1_000_000)}",
           type: "tool_call_stream",
           tool: tool_name,
           args: args
         }
+
         send_data_channel_message(data_channel, message)
         {data_channel, []}
       end,

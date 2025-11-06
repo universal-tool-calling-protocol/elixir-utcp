@@ -36,14 +36,17 @@ defmodule ExUtcp.Config do
   2. Loaded variable sources
   3. System environment variables
   """
-  @spec get_variable(T.client_config(), String.t()) :: {:ok, String.t()} | {:error, T.variable_not_found()}
+  @spec get_variable(T.client_config(), String.t()) ::
+          {:ok, String.t()} | {:error, T.variable_not_found()}
   def get_variable(config, key) do
     # Check inline variables first
     case Map.get(config.variables, key) do
       nil ->
         # Check loaded variable sources
         case get_from_loaders(config.load_variables_from, key) do
-          {:ok, value} -> {:ok, value}
+          {:ok, value} ->
+            {:ok, value}
+
           :error ->
             # Check system environment
             case System.get_env(key) do
@@ -51,7 +54,9 @@ defmodule ExUtcp.Config do
               value -> {:ok, value}
             end
         end
-      value -> {:ok, value}
+
+      value ->
+        {:ok, value}
     end
   end
 
@@ -61,7 +66,8 @@ defmodule ExUtcp.Config do
   @spec substitute_variables(T.client_config(), any()) :: any()
   def substitute_variables(config, value) when is_binary(value) do
     Regex.replace(~r/\$\{(\w+)\}|\$(\w+)/, value, fn match, var1, var2 ->
-      var_name = if var1 != "", do: var1, else: var2
+      var_name = if var1 == "", do: var2, else: var1
+
       case get_variable(config, var_name) do
         {:ok, replacement} -> replacement
         {:error, _} -> match

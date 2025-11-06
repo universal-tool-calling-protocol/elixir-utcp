@@ -177,7 +177,12 @@ defmodule ExUtcp.OpenApiConverterTest do
       opts = [
         prefix: "test",
         base_url: "https://custom.api.com",
-        auth: %{type: :api_key, api_key: "Bearer ${TOKEN}", location: :header, var_name: "Authorization"}
+        auth: %{
+          type: :api_key,
+          api_key: "Bearer ${TOKEN}",
+          location: :header,
+          var_name: "Authorization"
+        }
       ]
 
       {:ok, manual} = OpenApiConverter.convert(spec, opts)
@@ -205,7 +210,7 @@ defmodule ExUtcp.OpenApiConverterTest do
       }
 
       {:ok, manual} = OpenApiConverter.convert(spec, include_deprecated: false)
-      assert length(manual.tools) == 0
+      assert Enum.empty?(manual.tools)
 
       {:ok, manual} = OpenApiConverter.convert(spec, include_deprecated: true)
       assert length(manual.tools) == 1
@@ -222,7 +227,9 @@ defmodule ExUtcp.OpenApiConverterTest do
   describe "convert_from_url/2" do
     test "converts spec from URL" do
       # This test would require a real URL, so we'll test error handling
-      {:error, reason} = OpenApiConverter.convert_from_url("https://invalid-url-that-does-not-exist.com/spec.json")
+      {:error, reason} =
+        OpenApiConverter.convert_from_url("https://invalid-url-that-does-not-exist.com/spec.json")
+
       assert is_binary(reason)
     end
   end
@@ -330,8 +337,7 @@ defmodule ExUtcp.OpenApiConverterTest do
 
       {:ok, result} = OpenApiConverter.validate(spec)
       assert result.valid == false
-      assert length(result.errors) > 0
+      refute Enum.empty?(result.errors)
     end
   end
 end
-

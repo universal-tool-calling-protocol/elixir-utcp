@@ -75,11 +75,8 @@ defmodule ExUtcp.Transports.Http do
   # Private functions
 
   defp discover_tools(provider) do
-    with {:ok, response} <- make_request(provider, provider.http_method, provider.url, %{}),
-         {:ok, tools} <- parse_discovery_response(response, provider) do
-      {:ok, tools}
-    else
-      {:error, reason} -> {:error, reason}
+    with {:ok, response} <- make_request(provider, provider.http_method, provider.url, %{}) do
+      parse_discovery_response(response, provider)
     end
   end
 
@@ -88,11 +85,8 @@ defmodule ExUtcp.Transports.Http do
     url_template = substitute_url_params(provider.url, args)
     remaining_args = remove_url_params(args, provider.url)
 
-    with {:ok, response} <- make_tool_request(provider, url_template, remaining_args),
-         {:ok, result} <- parse_tool_response(response) do
-      {:ok, result}
-    else
-      {:error, reason} -> {:error, reason}
+    with {:ok, response} <- make_tool_request(provider, url_template, remaining_args) do
+      parse_tool_response(response)
     end
   end
 
@@ -144,6 +138,7 @@ defmodule ExUtcp.Transports.Http do
   defp substitute_url_params(url, args) do
     Enum.reduce(args, url, fn {key, value}, acc_url ->
       placeholder = "{#{key}}"
+
       if String.contains?(acc_url, placeholder) do
         String.replace(acc_url, placeholder, to_string(value))
       else
@@ -169,6 +164,7 @@ defmodule ExUtcp.Transports.Http do
           {:ok, data} -> parse_utcp_manual(data, provider)
           {:error, reason} -> {:error, "Failed to parse JSON response: #{reason}"}
         end
+
       status ->
         {:error, "HTTP error: #{status}"}
     end
@@ -181,6 +177,7 @@ defmodule ExUtcp.Transports.Http do
           {:ok, data} -> {:ok, data}
           {:error, reason} -> {:error, "Failed to parse JSON response: #{reason}"}
         end
+
       status ->
         {:error, "HTTP error: #{status}"}
     end
@@ -192,6 +189,7 @@ defmodule ExUtcp.Transports.Http do
         # UTCP manual format
         tools = Map.get(data, "tools", [])
         {:ok, Enum.map(tools, &normalize_tool(&1, provider))}
+
       _ ->
         # Try OpenAPI conversion
         case convert_openapi(data, provider) do
@@ -207,7 +205,7 @@ defmodule ExUtcp.Transports.Http do
   end
 
   defp normalize_tool(tool_data, provider) do
-    ExUtcp.Tools.new_tool([
+    ExUtcp.Tools.new_tool(
       name: Map.get(tool_data, "name", ""),
       description: Map.get(tool_data, "description", ""),
       inputs: parse_schema(Map.get(tool_data, "inputs", %{})),
@@ -215,7 +213,7 @@ defmodule ExUtcp.Transports.Http do
       tags: Map.get(tool_data, "tags", []),
       average_response_size: Map.get(tool_data, "average_response_size"),
       provider: provider
-    ])
+    )
   end
 
   defp execute_tool_stream(tool_name, args, provider) do
@@ -223,10 +221,13 @@ defmodule ExUtcp.Transports.Http do
     url_template = substitute_url_params(provider.url, args)
     remaining_args = remove_url_params(args, provider.url)
 
-    with {:ok, stream} <- make_streaming_request(provider, url_template, remaining_args) do
-      {:ok, %{type: :stream, data: stream, metadata: %{"transport" => "http", "tool" => tool_name}}}
-    else
-      {:error, reason} -> {:error, reason}
+    case make_streaming_request(provider, url_template, remaining_args) do
+      {:ok, stream} ->
+        {:ok,
+         %{type: :stream, data: stream, metadata: %{"transport" => "http", "tool" => tool_name}}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -253,7 +254,9 @@ defmodule ExUtcp.Transports.Http do
         else
           {:error, "HTTP #{response.status}: #{inspect(response.body)}"}
         end
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -267,8 +270,10 @@ defmodule ExUtcp.Transports.Http do
         case read_sse_chunk(state) do
           {:ok, chunk, new_state} ->
             {[chunk], new_state}
+
           {:error, :end} ->
             {:halt, state}
+
           {:error, reason} ->
             {[%{type: :error, error: reason, code: 500}], state}
         end
@@ -286,14 +291,18 @@ defmodule ExUtcp.Transports.Http do
         new_state = %{state | response: new_response, buffer: remaining_buffer}
 
         case chunks do
-          [] -> read_sse_chunk(new_state)
+          [] ->
+            read_sse_chunk(new_state)
+
           [chunk | _rest] ->
             processed_chunk = process_sse_chunk(chunk, state.sequence)
             new_state = %{new_state | sequence: state.sequence + 1}
             {:ok, processed_chunk, new_state}
         end
+
       {:error, :end} ->
         {:error, :end}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -307,7 +316,9 @@ defmodule ExUtcp.Transports.Http do
 
   defp parse_sse_lines(lines, acc) do
     case lines do
-      [] -> {Enum.reverse(acc), ""}
+      [] ->
+        {Enum.reverse(acc), ""}
+
       [line | rest] ->
         case parse_sse_line(line) do
           {:ok, chunk} -> parse_sse_lines(rest, [chunk | acc])
@@ -318,17 +329,29 @@ defmodule ExUtcp.Transports.Http do
 
   defp parse_sse_line(line) do
     case String.trim(line) do
-      "" -> :continue
-      "data: [DONE]" -> {:ok, %{type: :end}}
+      "" ->
+        :continue
+
+      "data: [DONE]" ->
+        {:ok, %{type: :end}}
+
       "data: " <> data ->
         case Jason.decode(data) do
           {:ok, json_data} -> {:ok, %{type: :data, content: json_data}}
           {:error, _} -> {:ok, %{type: :data, content: data}}
         end
-      "event: " <> _event -> :continue
-      "id: " <> _id -> :continue
-      "retry: " <> _retry -> :continue
-      _ -> :continue
+
+      "event: " <> _event ->
+        :continue
+
+      "id: " <> _id ->
+        :continue
+
+      "retry: " <> _retry ->
+        :continue
+
+      _ ->
+        :continue
     end
   end
 
@@ -341,15 +364,17 @@ defmodule ExUtcp.Transports.Http do
           timestamp: System.monotonic_time(:millisecond),
           sequence: sequence
         }
+
       %{type: :end} ->
         %{type: :end, metadata: %{"sequence" => sequence}}
+
       other ->
         other
     end
   end
 
   defp parse_schema(schema_data) do
-    ExUtcp.Tools.new_schema([
+    ExUtcp.Tools.new_schema(
       type: Map.get(schema_data, "type", "object"),
       properties: Map.get(schema_data, "properties", %{}),
       required: Map.get(schema_data, "required", []),
@@ -360,6 +385,6 @@ defmodule ExUtcp.Transports.Http do
       minimum: Map.get(schema_data, "minimum"),
       maximum: Map.get(schema_data, "maximum"),
       format: Map.get(schema_data, "format", "")
-    ])
+    )
   end
 end

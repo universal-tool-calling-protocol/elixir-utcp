@@ -17,18 +17,26 @@ defmodule ExUtcp.Search.Fuzzy do
     tools
     |> Enum.map(fn tool ->
       name_similarity = string_similarity(tool.name, query)
-      desc_similarity = if opts.include_descriptions do
-        string_similarity(tool.definition.description, query)
-      else
-        0.0
-      end
+
+      desc_similarity =
+        if opts.include_descriptions do
+          string_similarity(tool.definition.description, query)
+        else
+          0.0
+        end
 
       max_similarity = max(name_similarity, desc_similarity)
 
       if max_similarity >= threshold do
         matched_fields = []
-        matched_fields = if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
-        matched_fields = if desc_similarity >= threshold, do: ["description" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if desc_similarity >= threshold,
+            do: ["description" | matched_fields],
+            else: matched_fields
 
         %{
           tool: tool,
@@ -36,8 +44,6 @@ defmodule ExUtcp.Search.Fuzzy do
           match_type: :fuzzy,
           matched_fields: matched_fields
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -60,8 +66,12 @@ defmodule ExUtcp.Search.Fuzzy do
 
       if max_similarity >= threshold do
         matched_fields = []
-        matched_fields = if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
-        matched_fields = if type_similarity >= threshold, do: ["type" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if name_similarity >= threshold, do: ["name" | matched_fields], else: matched_fields
+
+        matched_fields =
+          if type_similarity >= threshold, do: ["type" | matched_fields], else: matched_fields
 
         %{
           provider: provider,
@@ -69,8 +79,6 @@ defmodule ExUtcp.Search.Fuzzy do
           match_type: :fuzzy,
           matched_fields: matched_fields
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -86,9 +94,15 @@ defmodule ExUtcp.Search.Fuzzy do
     str2_lower = String.downcase(str2)
 
     cond do
-      str1_lower == str2_lower -> 1.0
-      String.contains?(str1_lower, str2_lower) -> 0.8
-      String.contains?(str2_lower, str1_lower) -> 0.8
+      str1_lower == str2_lower ->
+        1.0
+
+      String.contains?(str1_lower, str2_lower) ->
+        0.8
+
+      String.contains?(str2_lower, str1_lower) ->
+        0.8
+
       true ->
         # Use FuzzyCompare for advanced similarity calculation
         case FuzzyCompare.similarity(str1_lower, str2_lower) do
@@ -130,7 +144,7 @@ defmodule ExUtcp.Search.Fuzzy do
       1.0
     else
       distance = levenshtein_distance(str1, str2)
-      1.0 - (distance / max_length)
+      1.0 - distance / max_length
     end
   end
 
@@ -141,32 +155,39 @@ defmodule ExUtcp.Search.Fuzzy do
     len2 = length(str2_chars)
 
     # Initialize distance matrix
-    matrix = for i <- 0..len1, into: %{} do
-      {i, %{0 => i}}
-    end
+    matrix =
+      for i <- 0..len1, into: %{} do
+        {i, %{0 => i}}
+      end
 
-    matrix = for j <- 0..len2, reduce: matrix do
-      acc -> put_in(acc, [0, j], j)
-    end
+    matrix =
+      for j <- 0..len2, reduce: matrix do
+        acc -> put_in(acc, [0, j], j)
+      end
 
     # Fill the matrix
-    matrix = for i <- 1..len1, j <- 1..len2, reduce: matrix do
-      acc ->
-        char1 = Enum.at(str1_chars, i - 1)
-        char2 = Enum.at(str2_chars, j - 1)
+    matrix =
+      for i <- 1..len1, j <- 1..len2, reduce: matrix do
+        acc ->
+          char1 = Enum.at(str1_chars, i - 1)
+          char2 = Enum.at(str2_chars, j - 1)
 
-        cost = if char1 == char2, do: 0, else: 1
+          cost = if char1 == char2, do: 0, else: 1
 
-        min_val = min(
-          acc[i - 1][j] + 1,      # deletion
-          min(
-            acc[i][j - 1] + 1,    # insertion
-            acc[i - 1][j - 1] + cost  # substitution
-          )
-        )
+          min_val =
+            min(
+              # deletion
+              acc[i - 1][j] + 1,
+              min(
+                # insertion
+                acc[i][j - 1] + 1,
+                # substitution
+                acc[i - 1][j - 1] + cost
+              )
+            )
 
-        put_in(acc, [i, j], min_val)
-    end
+          put_in(acc, [i, j], min_val)
+      end
 
     matrix[len1][len2]
   end

@@ -1,9 +1,10 @@
 defmodule ExUtcp.Transports.WebSocketTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
 
-  alias ExUtcp.Transports.WebSocket
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.WebSocket
+
+  @moduletag :integration
 
   describe "WebSocket Transport" do
     test "creates new transport" do
@@ -37,7 +38,7 @@ defmodule ExUtcp.Transports.WebSocketTest do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "WebSocket transport can only be used with WebSocket providers"} =
-        WebSocket.register_tool_provider(http_provider)
+               WebSocket.register_tool_provider(http_provider)
     end
 
     test "handles invalid provider in call_tool" do
@@ -45,7 +46,7 @@ defmodule ExUtcp.Transports.WebSocketTest do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "WebSocket transport can only be used with WebSocket providers"} =
-        WebSocket.call_tool("test_tool", %{}, http_provider)
+               WebSocket.call_tool("test_tool", %{}, http_provider)
     end
 
     test "handles invalid provider in call_tool_stream" do
@@ -53,7 +54,7 @@ defmodule ExUtcp.Transports.WebSocketTest do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "WebSocket transport can only be used with WebSocket providers"} =
-        WebSocket.call_tool_stream("test_tool", %{}, http_provider)
+               WebSocket.call_tool_stream("test_tool", %{}, http_provider)
     end
 
     test "deregister_tool_provider always succeeds" do
@@ -74,10 +75,11 @@ defmodule ExUtcp.Transports.WebSocketTest do
 
   describe "WebSocket Provider" do
     test "creates new websocket provider" do
-      provider = Providers.new_websocket_provider([
-        name: "test_ws",
-        url: "ws://example.com/ws"
-      ])
+      provider =
+        Providers.new_websocket_provider(
+          name: "test_ws",
+          url: "ws://example.com/ws"
+        )
 
       assert provider.name == "test_ws"
       assert provider.type == :websocket
@@ -92,15 +94,16 @@ defmodule ExUtcp.Transports.WebSocketTest do
     test "creates websocket provider with all options" do
       auth = ExUtcp.Auth.new_api_key_auth(api_key: "test-key", location: "header")
 
-      provider = Providers.new_websocket_provider([
-        name: "test_ws",
-        url: "ws://example.com/ws",
-        protocol: "utcp-v1",
-        keep_alive: true,
-        auth: auth,
-        headers: %{"User-Agent" => "Test/1.0"},
-        header_fields: ["X-Custom-Header"]
-      ])
+      provider =
+        Providers.new_websocket_provider(
+          name: "test_ws",
+          url: "ws://example.com/ws",
+          protocol: "utcp-v1",
+          keep_alive: true,
+          auth: auth,
+          headers: %{"User-Agent" => "Test/1.0"},
+          header_fields: ["X-Custom-Header"]
+        )
 
       assert provider.name == "test_ws"
       assert provider.type == :websocket
@@ -121,10 +124,11 @@ defmodule ExUtcp.Transports.WebSocketTest do
 
   describe "URL building" do
     test "builds tool URL correctly" do
-      _provider = Providers.new_websocket_provider([
-        name: "test",
-        url: "ws://example.com/tools"
-      ])
+      _provider =
+        Providers.new_websocket_provider(
+          name: "test",
+          url: "ws://example.com/tools"
+        )
 
       # This would be tested in private function, but we can test the concept
       _base_url = "ws://example.com/tools"
@@ -142,10 +146,11 @@ defmodule ExUtcp.Transports.WebSocketTest do
       {:ok, _pid} = WebSocket.start_link()
 
       # This would require mocking WebSockex in a real test
-      provider = Providers.new_websocket_provider([
-        name: "test",
-        url: "ws://invalid-url-that-does-not-exist:9999/ws"
-      ])
+      provider =
+        Providers.new_websocket_provider(
+          name: "test",
+          url: "ws://invalid-url-that-does-not-exist:9999/ws"
+        )
 
       # In a real test environment, we would mock the WebSocket connection
       # and test error handling scenarios. The real implementation now tries
@@ -184,10 +189,11 @@ defmodule ExUtcp.Transports.WebSocketTest do
       transport = WebSocket.new()
 
       # Test connection key generation
-      _provider = Providers.new_websocket_provider([
-        name: "test",
-        url: "ws://localhost:8080/ws"
-      ])
+      _provider =
+        Providers.new_websocket_provider(
+          name: "test",
+          url: "ws://localhost:8080/ws"
+        )
 
       # This would test actual connection management in a real implementation
       assert is_struct(transport)

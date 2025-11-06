@@ -63,6 +63,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
     case get_or_create_connection(provider, state) do
       {:ok, conn_pid, new_state} ->
         {:reply, {:ok, conn_pid}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -73,6 +74,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
     case Map.get(state.connections, conn_pid) do
       nil ->
         {:reply, {:error, :not_found}, state}
+
       _provider ->
         Connection.close(conn_pid)
         new_connections = Map.delete(state.connections, conn_pid)
@@ -98,6 +100,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
       max_connections: state.max_connections,
       connection_timeout: state.connection_timeout
     }
+
     {:reply, stats, state}
   end
 
@@ -108,6 +111,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
     case find_existing_connection(provider, state) do
       {:ok, conn_pid} ->
         {:ok, conn_pid, state}
+
       :not_found ->
         create_new_connection(provider, state)
     end
@@ -115,8 +119,8 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
 
   defp find_existing_connection(provider, state) do
     case Enum.find(state.connections, fn {_pid, conn_provider} ->
-      conn_provider.name == provider.name and conn_provider.protocol == provider.protocol
-    end) do
+           conn_provider.name == provider.name and conn_provider.protocol == provider.protocol
+         end) do
       {conn_pid, _provider} -> {:ok, conn_pid}
       nil -> :not_found
     end
@@ -131,6 +135,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
           new_connections = Map.put(state.connections, conn_pid, provider)
           new_state = %{state | connections: new_connections}
           {:ok, conn_pid, new_state}
+
         {:error, reason} ->
           {:error, "Failed to create connection: #{inspect(reason)}"}
       end

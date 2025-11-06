@@ -10,27 +10,25 @@ defmodule ExUtcp.Transports.Graphql.Schema do
   """
   @spec extract_tools(map()) :: [map()]
   def extract_tools(schema) do
-    try do
-      tools = []
+    tools = []
 
-      # Extract query tools
-      query_tools = extract_operation_tools(schema, "query", "Query")
-      tools = tools ++ query_tools
+    # Extract query tools
+    query_tools = extract_operation_tools(schema, "query", "Query")
+    tools = tools ++ query_tools
 
-      # Extract mutation tools
-      mutation_tools = extract_operation_tools(schema, "mutation", "Mutation")
-      tools = tools ++ mutation_tools
+    # Extract mutation tools
+    mutation_tools = extract_operation_tools(schema, "mutation", "Mutation")
+    tools = tools ++ mutation_tools
 
-      # Extract subscription tools
-      subscription_tools = extract_operation_tools(schema, "subscription", "Subscription")
-      tools = tools ++ subscription_tools
+    # Extract subscription tools
+    subscription_tools = extract_operation_tools(schema, "subscription", "Subscription")
+    tools = tools ++ subscription_tools
 
-      tools
-    rescue
-      error ->
-        Logger.error("Failed to extract tools from GraphQL schema: #{inspect(error)}")
-        []
-    end
+    tools
+  rescue
+    error ->
+      Logger.error("Failed to extract tools from GraphQL schema: #{inspect(error)}")
+      []
   end
 
   @doc """
@@ -38,27 +36,25 @@ defmodule ExUtcp.Transports.Graphql.Schema do
   """
   @spec validate_query(String.t()) :: {:ok, String.t()} | {:error, term()}
   def validate_query(query_string) do
-    try do
-      # Basic validation - check for common GraphQL syntax
-      trimmed = String.trim(query_string)
+    # Basic validation - check for common GraphQL syntax
+    trimmed = String.trim(query_string)
 
-      cond do
-        String.length(trimmed) == 0 ->
-          {:error, "Empty query"}
+    cond do
+      String.length(trimmed) == 0 ->
+        {:error, "Empty query"}
 
-        not String.contains?(trimmed, ["query", "mutation", "subscription"]) ->
-          {:error, "Query must contain query, mutation, or subscription"}
+      not String.contains?(trimmed, ["query", "mutation", "subscription"]) ->
+        {:error, "Query must contain query, mutation, or subscription"}
 
-        not String.contains?(trimmed, "{") ->
-          {:error, "Query must contain selection set"}
+      not String.contains?(trimmed, "{") ->
+        {:error, "Query must contain selection set"}
 
-        true ->
-          {:ok, trimmed}
-      end
-    rescue
-      error ->
-        {:error, "Query validation failed: #{inspect(error)}"}
+      true ->
+        {:ok, trimmed}
     end
+  rescue
+    error ->
+      {:error, "Query validation failed: #{inspect(error)}"}
   end
 
   @doc """
@@ -122,54 +118,60 @@ defmodule ExUtcp.Transports.Graphql.Schema do
   """
   @spec parse_response(map()) :: {:ok, map()} | {:error, term()}
   def parse_response(response) do
-    try do
-      case response do
-        %{"data" => data, "errors" => nil} ->
-          {:ok, data}
-        %{"data" => data, "errors" => errors} ->
-          Logger.warning("GraphQL response contains errors: #{inspect(errors)}")
-          {:ok, data}
-        %{"errors" => errors} ->
-          {:error, "GraphQL errors: #{inspect(errors)}"}
-        _ ->
-          {:error, "Invalid GraphQL response format"}
-      end
-    rescue
-      error ->
-        {:error, "Failed to parse GraphQL response: #{inspect(error)}"}
+    case response do
+      %{"data" => data, "errors" => nil} ->
+        {:ok, data}
+
+      %{"data" => data, "errors" => errors} ->
+        Logger.warning("GraphQL response contains errors: #{inspect(errors)}")
+        {:ok, data}
+
+      %{"errors" => errors} ->
+        {:error, "GraphQL errors: #{inspect(errors)}"}
+
+      _ ->
+        {:error, "Invalid GraphQL response format"}
     end
+  rescue
+    error ->
+      {:error, "Failed to parse GraphQL response: #{inspect(error)}"}
   end
 
   # Private functions
 
   defp extract_operation_tools(schema, operation_type, type_name) do
-    try do
-      case get_in(schema, ["__schema", "#{operation_type}Type"]) do
-        nil ->
-          []
-        %{"name" => ^type_name} ->
-          # Find the type definition
-          types = get_in(schema, ["__schema", "types"]) || []
-          type_def = Enum.find(types, fn type ->
+    case get_in(schema, ["__schema", "#{operation_type}Type"]) do
+      nil ->
+        []
+
+      %{"name" => ^type_name} ->
+        # Find the type definition
+        types = get_in(schema, ["__schema", "types"]) || []
+
+        type_def =
+          Enum.find(types, fn type ->
             get_in(type, ["name"]) == type_name
           end)
 
-          case type_def do
-            nil -> []
-            type ->
-              fields = get_in(type, ["fields"]) || []
-              Enum.map(fields, fn field ->
-                build_tool_from_field(field, operation_type)
-              end)
-          end
-        _ ->
-          []
-      end
-    rescue
-      error ->
-        Logger.error("Failed to extract #{operation_type} tools: #{inspect(error)}")
+        case type_def do
+          nil ->
+            []
+
+          type ->
+            fields = get_in(type, ["fields"]) || []
+
+            Enum.map(fields, fn field ->
+              build_tool_from_field(field, operation_type)
+            end)
+        end
+
+      _ ->
         []
     end
+  rescue
+    error ->
+      Logger.error("Failed to extract #{operation_type} tools: #{inspect(error)}")
+      []
   end
 
   defp build_tool_from_field(field, operation_type) do
@@ -201,16 +203,17 @@ defmodule ExUtcp.Transports.Graphql.Schema do
   end
 
   defp build_input_schema(args) do
-    properties = Enum.reduce(args, %{}, fn arg, acc ->
-      name = get_in(arg, ["name"]) || "unknown"
-      type_info = get_in(arg, ["type"]) || %{}
-      elixir_type = graphql_type_to_elixir(type_info)
+    properties =
+      Enum.reduce(args, %{}, fn arg, acc ->
+        name = get_in(arg, ["name"]) || "unknown"
+        type_info = get_in(arg, ["type"]) || %{}
+        elixir_type = graphql_type_to_elixir(type_info)
 
-      Map.put(acc, name, %{
-        "type" => elixir_type,
-        "description" => get_in(arg, ["description"]) || "No description"
-      })
-    end)
+        Map.put(acc, name, %{
+          "type" => elixir_type,
+          "description" => get_in(arg, ["description"]) || "No description"
+        })
+      end)
 
     %{
       "type" => "object",
@@ -230,14 +233,17 @@ defmodule ExUtcp.Transports.Graphql.Schema do
           "ID" -> "string"
           _ -> "any"
         end
+
       "NON_NULL" ->
         # Non-null type, get the inner type
         inner_type = get_in(type_info, ["ofType"])
         graphql_type_to_elixir(inner_type || %{})
+
       "LIST" ->
         # List type
         _inner_type = get_in(type_info, ["ofType"])
         "array"
+
       _ ->
         "any"
     end
@@ -249,10 +255,9 @@ defmodule ExUtcp.Transports.Graphql.Schema do
 
   defp build_args_string(args) do
     args
-    |> Enum.map(fn {key, value} ->
+    |> Enum.map_join(", ", fn {key, value} ->
       "$#{key}: #{value_to_graphql_type(value)}"
     end)
-    |> Enum.join(", ")
   end
 
   defp value_to_graphql_type(value) do

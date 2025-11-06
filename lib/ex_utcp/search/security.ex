@@ -6,8 +6,8 @@ defmodule ExUtcp.Search.Security do
   and provides warnings or filtering capabilities.
   """
 
-  alias TruffleHog
   alias ExUtcp.Types
+  alias TruffleHog
 
   @doc """
   Scans tools for sensitive data and returns security warnings.
@@ -17,6 +17,7 @@ defmodule ExUtcp.Search.Security do
     tools
     |> Enum.reduce(%{}, fn tool, acc ->
       warnings = scan_tool(tool)
+
       if Enum.empty?(warnings) do
         acc
       else
@@ -39,20 +40,22 @@ defmodule ExUtcp.Search.Security do
     warnings = warnings ++ scan_text(tool.definition.description, "description")
 
     # Scan parameters
-    warnings = if Map.has_key?(tool.definition, :parameters) do
-      param_text = Jason.encode!(tool.definition.parameters)
-      warnings ++ scan_text(param_text, "parameters")
-    else
-      warnings
-    end
+    warnings =
+      if Map.has_key?(tool.definition, :parameters) do
+        param_text = Jason.encode!(tool.definition.parameters)
+        warnings ++ scan_text(param_text, "parameters")
+      else
+        warnings
+      end
 
     # Scan response schema
-    warnings = if Map.has_key?(tool.definition, :response) do
-      response_text = Jason.encode!(tool.definition.response)
-      warnings ++ scan_text(response_text, "response")
-    else
-      warnings
-    end
+    warnings =
+      if Map.has_key?(tool.definition, :response) do
+        response_text = Jason.encode!(tool.definition.response)
+        warnings ++ scan_text(response_text, "response")
+      else
+        warnings
+      end
 
     warnings
   end
@@ -65,6 +68,7 @@ defmodule ExUtcp.Search.Security do
     providers
     |> Enum.reduce(%{}, fn provider, acc ->
       warnings = scan_provider(provider)
+
       if Enum.empty?(warnings) do
         acc
       else
@@ -84,27 +88,30 @@ defmodule ExUtcp.Search.Security do
     warnings = warnings ++ scan_text(provider.name, "provider_name")
 
     # Scan URL if present
-    warnings = if Map.has_key?(provider, :url) do
-      warnings ++ scan_text(provider.url, "url")
-    else
-      warnings
-    end
+    warnings =
+      if Map.has_key?(provider, :url) do
+        warnings ++ scan_text(provider.url, "url")
+      else
+        warnings
+      end
 
     # Scan headers if present
-    warnings = if Map.has_key?(provider, :headers) do
-      headers_text = Jason.encode!(provider.headers)
-      warnings ++ scan_text(headers_text, "headers")
-    else
-      warnings
-    end
+    warnings =
+      if Map.has_key?(provider, :headers) do
+        headers_text = Jason.encode!(provider.headers)
+        warnings ++ scan_text(headers_text, "headers")
+      else
+        warnings
+      end
 
     # Scan authentication if present
-    warnings = if Map.has_key?(provider, :auth) and provider.auth do
-      auth_text = Jason.encode!(provider.auth)
-      warnings ++ scan_text(auth_text, "auth")
-    else
-      warnings
-    end
+    warnings =
+      if Map.has_key?(provider, :auth) and provider.auth do
+        auth_text = Jason.encode!(provider.auth)
+        warnings ++ scan_text(auth_text, "auth")
+      else
+        warnings
+      end
 
     warnings
   end
@@ -148,24 +155,22 @@ defmodule ExUtcp.Search.Security do
   # Private functions
 
   defp scan_text(text, field_name) do
-    try do
-      # Use TruffleHog to find sensitive data matches
-      matches = TruffleHog.find_matches(text, :all, %{})
+    # Use TruffleHog to find sensitive data matches
+    matches = TruffleHog.find_matches(text, :all, %{})
 
-      Enum.map(matches, fn match ->
-        %{
-          field: field_name,
-          type: match.type || "unknown",
-          value: String.slice(match.value || "", 0, 10) <> "...",
-          confidence: match.confidence || 0.8,
-          line: match.line || 1
-        }
-      end)
-    rescue
-      _ ->
-        # Fallback to basic pattern matching if TruffleHog fails
-        scan_text_basic(text, field_name)
-    end
+    Enum.map(matches, fn match ->
+      %{
+        field: field_name,
+        type: match.type || "unknown",
+        value: String.slice(match.value || "", 0, 10) <> "...",
+        confidence: match.confidence || 0.8,
+        line: match.line || 1
+      }
+    end)
+  rescue
+    _ ->
+      # Fallback to basic pattern matching if TruffleHog fails
+      scan_text_basic(text, field_name)
   end
 
   defp scan_text_basic(text, field_name) do
@@ -180,19 +185,23 @@ defmodule ExUtcp.Search.Security do
 
     Enum.flat_map(patterns, fn {pattern, type} ->
       case Regex.scan(pattern, text, capture: :all_but_first) do
-        [] -> []
+        [] ->
+          []
+
         matches ->
           Enum.map(matches, fn match ->
-            value = case match do
-              [val] -> val
-              val when is_binary(val) -> val
-              _ -> "unknown"
-            end
+            value =
+              case match do
+                [val] -> val
+                val when is_binary(val) -> val
+                _ -> "unknown"
+              end
 
             %{
               field: field_name,
               type: type,
-              value: String.slice(value, 0, 10) <> "...", # Truncate for security
+              # Truncate for security
+              value: String.slice(value, 0, 10) <> "...",
               confidence: 0.8,
               line: 1
             }

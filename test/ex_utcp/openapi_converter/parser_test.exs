@@ -161,10 +161,11 @@ defmodule ExUtcp.OpenApiConverter.ParserTest do
 
       {:ok, parsed_spec} = Parser.parse(spec)
 
-      operation = parsed_spec.paths
-      |> List.first()
-      |> Map.get(:operations)
-      |> List.first()
+      operation =
+        parsed_spec.paths
+        |> List.first()
+        |> Map.get(:operations)
+        |> List.first()
 
       assert operation.operation_id == "get_users"
     end
@@ -256,7 +257,7 @@ defmodule ExUtcp.OpenApiConverter.ParserTest do
 
       {:ok, result} = Parser.validate(spec)
       assert result.valid == false
-      assert length(result.errors) > 0
+      refute Enum.empty?(result.errors)
       assert result.version == nil
       assert result.operations_count == 0
       assert result.security_schemes_count == 0

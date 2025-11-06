@@ -6,8 +6,9 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   the WebSockex behavior for managing WebSocket state and messages.
   """
 
-  use WebSockex
   @behaviour ExUtcp.Transports.WebSocket.ConnectionBehaviour
+
+  use WebSockex
 
   require Logger
 
@@ -135,6 +136,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
       :connected ->
         # Send ping frame
         {:reply, {:ping, "ping"}, state}
+
       _ ->
         {:ok, state}
     end
@@ -219,7 +221,9 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
           {:ok, response} -> {:ok, response}
           {:error, reason} -> {:error, reason}
         end
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -227,7 +231,8 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   Calls a tool stream through the WebSocket connection.
   """
   @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
-  @spec call_tool_stream(pid(), String.t(), map(), keyword()) :: {:ok, Enumerable.t()} | {:error, term()}
+  @spec call_tool_stream(pid(), String.t(), map(), keyword()) ::
+          {:ok, Enumerable.t()} | {:error, term()}
   def call_tool_stream(pid, tool_name, args, opts \\ []) do
     message = %{
       type: "tool_stream",
@@ -237,15 +242,19 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
 
     case send_message(pid, Jason.encode!(message)) do
       :ok ->
-        stream = Stream.unfold(nil, fn _ ->
-          case get_next_message(pid, Keyword.get(opts, :timeout, 5_000)) do
-            {:ok, %{"type" => "stream_end"}} -> nil
-            {:ok, data} -> {data, nil}
-            {:error, _} -> nil
-          end
-        end)
+        stream =
+          Stream.unfold(nil, fn _ ->
+            case get_next_message(pid, Keyword.get(opts, :timeout, 5_000)) do
+              {:ok, %{"type" => "stream_end"}} -> nil
+              {:ok, data} -> {data, nil}
+              {:error, _} -> nil
+            end
+          end)
+
         {:ok, stream}
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -274,6 +283,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
       {{:value, message}, new_queue} ->
         new_state = %{state | message_queue: new_queue}
         {:reply, {:ok, message}, new_state}
+
       {:empty, _} ->
         {:reply, {:error, :empty}, state}
     end

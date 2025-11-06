@@ -4,6 +4,7 @@ defmodule ExUtcp.StreamingUnitTest do
   """
 
   use ExUnit.Case, async: true
+
   @moduletag :unit
 
   describe "Stream Types and Structures" do
@@ -39,7 +40,8 @@ defmodule ExUtcp.StreamingUnitTest do
 
       # Verify required fields
       assert result.type == :stream
-      assert %Stream{} = result.data  # Stream is a struct
+      # Stream is a struct
+      assert %Stream{} = result.data
       assert is_map(result.metadata)
     end
 
@@ -82,15 +84,16 @@ defmodule ExUtcp.StreamingUnitTest do
       stream = Stream.map(mock_chunks, & &1)
 
       # Test stream processing
-      processed = stream
-      |> Stream.map(fn chunk ->
-        case chunk do
-          %{type: :end} -> :done
-          chunk -> chunk.data
-        end
-      end)
-      |> Stream.reject(&(&1 == :done))
-      |> Enum.to_list()
+      processed =
+        stream
+        |> Stream.map(fn chunk ->
+          case chunk do
+            %{type: :end} -> :done
+            chunk -> chunk.data
+          end
+        end)
+        |> Stream.reject(&(&1 == :done))
+        |> Enum.to_list()
 
       assert processed == ["chunk1", "chunk2"]
     end
@@ -106,9 +109,10 @@ defmodule ExUtcp.StreamingUnitTest do
       stream = Stream.map(mock_chunks, & &1)
 
       # Test error handling
-      errors = stream
-      |> Stream.filter(fn chunk -> Map.get(chunk, :type) == :error end)
-      |> Enum.to_list()
+      errors =
+        stream
+        |> Stream.filter(fn chunk -> Map.get(chunk, :type) == :error end)
+        |> Enum.to_list()
 
       assert length(errors) == 1
       assert hd(errors).error == "Connection lost"
@@ -118,19 +122,35 @@ defmodule ExUtcp.StreamingUnitTest do
     test "filters stream by metadata" do
       # Create a mock stream with different metadata
       mock_chunks = [
-        %{data: "chunk1", metadata: %{"type" => "data", "sequence" => 0}, timestamp: 1000, sequence: 0},
-        %{data: "chunk2", metadata: %{"type" => "control", "sequence" => 1}, timestamp: 2000, sequence: 1},
-        %{data: "chunk3", metadata: %{"type" => "data", "sequence" => 2}, timestamp: 3000, sequence: 2}
+        %{
+          data: "chunk1",
+          metadata: %{"type" => "data", "sequence" => 0},
+          timestamp: 1000,
+          sequence: 0
+        },
+        %{
+          data: "chunk2",
+          metadata: %{"type" => "control", "sequence" => 1},
+          timestamp: 2000,
+          sequence: 1
+        },
+        %{
+          data: "chunk3",
+          metadata: %{"type" => "data", "sequence" => 2},
+          timestamp: 3000,
+          sequence: 2
+        }
       ]
 
       stream = Stream.map(mock_chunks, & &1)
 
       # Filter by metadata
-      data_chunks = stream
-      |> Stream.filter(fn chunk ->
-        Map.get(chunk.metadata, "type") == "data"
-      end)
-      |> Enum.to_list()
+      data_chunks =
+        stream
+        |> Stream.filter(fn chunk ->
+          Map.get(chunk.metadata, "type") == "data"
+        end)
+        |> Enum.to_list()
 
       assert length(data_chunks) == 2
       assert hd(data_chunks).data == "chunk1"
@@ -150,17 +170,20 @@ defmodule ExUtcp.StreamingUnitTest do
       stream = Stream.map(mock_chunks, & &1)
 
       # Aggregate statistics
-      {data_chunks, error_count, total_count} = stream
-      |> Enum.reduce({[], 0, 0}, fn chunk, {acc, errors, count} ->
-        case chunk do
-          %{type: :error} ->
-            {acc, errors + 1, count + 1}
-          %{type: :end} ->
-            {acc, errors, count + 1}
-          chunk ->
-            {[chunk | acc], errors, count + 1}
-        end
-      end)
+      {data_chunks, error_count, total_count} =
+        stream
+        |> Enum.reduce({[], 0, 0}, fn chunk, {acc, errors, count} ->
+          case chunk do
+            %{type: :error} ->
+              {acc, errors + 1, count + 1}
+
+            %{type: :end} ->
+              {acc, errors, count + 1}
+
+            chunk ->
+              {[chunk | acc], errors, count + 1}
+          end
+        end)
 
       assert length(data_chunks) == 2
       assert error_count == 2
@@ -201,22 +224,23 @@ defmodule ExUtcp.StreamingUnitTest do
       tool_name = "test_tool"
       provider_name = "test_provider"
 
-      stream = data
-      |> Stream.with_index(0)
-      |> Stream.map(fn {chunk, index} ->
-        %{
-          data: chunk,
-          metadata: %{
-            "sequence" => index,
-            "timestamp" => System.monotonic_time(:millisecond),
-            "tool" => tool_name,
-            "provider" => provider_name,
-            "transport" => "http"
-          },
-          timestamp: System.monotonic_time(:millisecond),
-          sequence: index
-        }
-      end)
+      stream =
+        data
+        |> Stream.with_index(0)
+        |> Stream.map(fn {chunk, index} ->
+          %{
+            data: chunk,
+            metadata: %{
+              "sequence" => index,
+              "timestamp" => System.monotonic_time(:millisecond),
+              "tool" => tool_name,
+              "provider" => provider_name,
+              "transport" => "http"
+            },
+            timestamp: System.monotonic_time(:millisecond),
+            sequence: index
+          }
+        end)
 
       result = %{
         type: :stream,
@@ -236,22 +260,23 @@ defmodule ExUtcp.StreamingUnitTest do
       tool_name = "chat_tool"
       provider_name = "websocket_provider"
 
-      stream = data
-      |> Stream.with_index(0)
-      |> Stream.map(fn {chunk, index} ->
-        %{
-          data: chunk,
-          metadata: %{
-            "sequence" => index,
-            "timestamp" => System.monotonic_time(:millisecond),
-            "tool" => tool_name,
-            "provider" => provider_name,
-            "protocol" => "ws"
-          },
-          timestamp: System.monotonic_time(:millisecond),
-          sequence: index
-        }
-      end)
+      stream =
+        data
+        |> Stream.with_index(0)
+        |> Stream.map(fn {chunk, index} ->
+          %{
+            data: chunk,
+            metadata: %{
+              "sequence" => index,
+              "timestamp" => System.monotonic_time(:millisecond),
+              "tool" => tool_name,
+              "provider" => provider_name,
+              "protocol" => "ws"
+            },
+            timestamp: System.monotonic_time(:millisecond),
+            sequence: index
+          }
+        end)
 
       result = %{
         type: :stream,
@@ -271,22 +296,23 @@ defmodule ExUtcp.StreamingUnitTest do
       tool_name = "subscribe_updates"
       provider_name = "graphql_provider"
 
-      stream = data
-      |> Stream.with_index(0)
-      |> Stream.map(fn {chunk, index} ->
-        %{
-          data: chunk,
-          metadata: %{
-            "sequence" => index,
-            "timestamp" => System.monotonic_time(:millisecond),
-            "tool" => tool_name,
-            "provider" => provider_name,
-            "subscription" => true
-          },
-          timestamp: System.monotonic_time(:millisecond),
-          sequence: index
-        }
-      end)
+      stream =
+        data
+        |> Stream.with_index(0)
+        |> Stream.map(fn {chunk, index} ->
+          %{
+            data: chunk,
+            metadata: %{
+              "sequence" => index,
+              "timestamp" => System.monotonic_time(:millisecond),
+              "tool" => tool_name,
+              "provider" => provider_name,
+              "subscription" => true
+            },
+            timestamp: System.monotonic_time(:millisecond),
+            sequence: index
+          }
+        end)
 
       result = %{
         type: :stream,
@@ -307,28 +333,34 @@ defmodule ExUtcp.StreamingUnitTest do
       provider_name = "grpc_provider"
       service_name = "StreamingService"
 
-      stream = data
-      |> Stream.with_index(0)
-      |> Stream.map(fn {chunk, index} ->
-        %{
-          data: chunk,
-          metadata: %{
-            "sequence" => index,
-            "timestamp" => System.monotonic_time(:millisecond),
-            "tool" => tool_name,
-            "provider" => provider_name,
-            "protocol" => "grpc",
-            "service" => service_name
-          },
-          timestamp: System.monotonic_time(:millisecond),
-          sequence: index
-        }
-      end)
+      stream =
+        data
+        |> Stream.with_index(0)
+        |> Stream.map(fn {chunk, index} ->
+          %{
+            data: chunk,
+            metadata: %{
+              "sequence" => index,
+              "timestamp" => System.monotonic_time(:millisecond),
+              "tool" => tool_name,
+              "provider" => provider_name,
+              "protocol" => "grpc",
+              "service" => service_name
+            },
+            timestamp: System.monotonic_time(:millisecond),
+            sequence: index
+          }
+        end)
 
       result = %{
         type: :stream,
         data: stream,
-        metadata: %{"transport" => "grpc", "tool" => tool_name, "protocol" => "grpc", "service" => service_name}
+        metadata: %{
+          "transport" => "grpc",
+          "tool" => tool_name,
+          "protocol" => "grpc",
+          "service" => service_name
+        }
       }
 
       assert result.type == :stream
@@ -339,26 +371,31 @@ defmodule ExUtcp.StreamingUnitTest do
 
     test "creates MCP stream with JSON-RPC metadata" do
       # Simulate MCP streaming
-      data = [%{"method" => "tools/call", "result" => "success1"}, %{"method" => "tools/call", "result" => "success2"}]
+      data = [
+        %{"method" => "tools/call", "result" => "success1"},
+        %{"method" => "tools/call", "result" => "success2"}
+      ]
+
       tool_name = "mcp_tool"
       provider_name = "mcp_provider"
 
-      stream = data
-      |> Stream.with_index(0)
-      |> Stream.map(fn {chunk, index} ->
-        %{
-          data: chunk,
-          metadata: %{
-            "sequence" => index,
-            "timestamp" => System.monotonic_time(:millisecond),
-            "tool" => tool_name,
-            "provider" => provider_name,
-            "protocol" => "json-rpc-2.0"
-          },
-          timestamp: System.monotonic_time(:millisecond),
-          sequence: index
-        }
-      end)
+      stream =
+        data
+        |> Stream.with_index(0)
+        |> Stream.map(fn {chunk, index} ->
+          %{
+            data: chunk,
+            metadata: %{
+              "sequence" => index,
+              "timestamp" => System.monotonic_time(:millisecond),
+              "tool" => tool_name,
+              "provider" => provider_name,
+              "protocol" => "json-rpc-2.0"
+            },
+            timestamp: System.monotonic_time(:millisecond),
+            sequence: index
+          }
+        end)
 
       result = %{
         type: :stream,
@@ -405,13 +442,14 @@ defmodule ExUtcp.StreamingUnitTest do
       stream = Stream.map(chunks, & &1)
 
       # Test stream termination detection
-      {data_chunks, end_detected} = stream
-      |> Enum.reduce({[], false}, fn chunk, {acc, ended} ->
-        case chunk do
-          %{type: :end} -> {acc, true}
-          chunk -> {[chunk | acc], ended}
-        end
-      end)
+      {data_chunks, end_detected} =
+        stream
+        |> Enum.reduce({[], false}, fn chunk, {acc, ended} ->
+          case chunk do
+            %{type: :end} -> {acc, true}
+            chunk -> {[chunk | acc], ended}
+          end
+        end)
 
       assert end_detected == true
       assert length(data_chunks) == 2

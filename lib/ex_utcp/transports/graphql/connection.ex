@@ -3,9 +3,11 @@ defmodule ExUtcp.Transports.Graphql.Connection do
   Manages GraphQL connections with pooling and lifecycle management.
   """
 
-  use GenServer
-  require Logger
   @behaviour ExUtcp.Transports.Graphql.ConnectionBehaviour
+
+  use GenServer
+
+  require Logger
 
   defstruct [
     :provider,
@@ -137,9 +139,11 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         case execute_graphql_operation(new_state, :query, query_string, variables, opts) do
           {:ok, result} ->
             {:reply, {:ok, result}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -152,9 +156,11 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         case execute_graphql_operation(new_state, :mutation, mutation_string, variables, opts) do
           {:ok, result} ->
             {:reply, {:ok, result}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -167,9 +173,11 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         case execute_graphql_subscription(new_state, subscription_string, variables, opts) do
           {:ok, results} ->
             {:reply, {:ok, results}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -182,9 +190,11 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         case introspect_graphql_schema(new_state, opts) do
           {:ok, schema} ->
             {:reply, {:ok, schema}, update_last_used(new_state)}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -226,55 +236,56 @@ defmodule ExUtcp.Transports.Graphql.Connection do
   # Private functions
 
   defp establish_connection(state) do
-    try do
-      url = state.provider.url
-      headers = build_headers(state.provider)
+    url = state.provider.url
+    headers = build_headers(state.provider)
 
-      client = Req.new(
+    client =
+      Req.new(
         base_url: url,
         headers: headers,
         json: true,
         retry: false
       )
 
-      # Test the connection with a simple introspection query
-      test_query = """
-      query IntrospectionQuery {
-        __schema {
-          queryType {
-            name
-          }
+    # Test the connection with a simple introspection query
+    test_query = """
+    query IntrospectionQuery {
+      __schema {
+        queryType {
+          name
         }
       }
-      """
+    }
+    """
 
-      case Req.post(client, json: %{query: test_query}) do
-        {:ok, %{status: 200, body: _body}} ->
-          new_state = %{state |
-            client: client,
-            connection_state: :connected,
-            retry_count: 0
-          }
-          Logger.info("GraphQL connection established to #{url}")
-          {:ok, new_state}
-        {:ok, %{status: status, body: body}} ->
-          Logger.error("Failed to connect to GraphQL endpoint #{url}: HTTP #{status} - #{inspect(body)}")
-          {:error, "HTTP #{status}: #{inspect(body)}"}
-        {:error, reason} ->
-          Logger.error("Failed to connect to GraphQL endpoint #{url}: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Exception during GraphQL connection: #{inspect(error)}")
-        {:error, error}
+    case Req.post(client, json: %{query: test_query}) do
+      {:ok, %{status: 200, body: _body}} ->
+        new_state = %{state | client: client, connection_state: :connected, retry_count: 0}
+        Logger.info("GraphQL connection established to #{url}")
+        {:ok, new_state}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error(
+          "Failed to connect to GraphQL endpoint #{url}: HTTP #{status} - #{inspect(body)}"
+        )
+
+        {:error, "HTTP #{status}: #{inspect(body)}"}
+
+      {:error, reason} ->
+        Logger.error("Failed to connect to GraphQL endpoint #{url}: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Exception during GraphQL connection: #{inspect(error)}")
+      {:error, error}
   end
 
   defp ensure_connected(state) do
     case state.connection_state do
       :connected ->
         {:ok, state}
+
       _ ->
         case establish_connection(state) do
           {:ok, new_state} -> {:ok, new_state}
@@ -284,141 +295,147 @@ defmodule ExUtcp.Transports.Graphql.Connection do
   end
 
   defp execute_graphql_operation(state, operation_type, operation_string, variables, opts) do
-    try do
-      timeout = Keyword.get(opts, :timeout, 30_000)
+    timeout = Keyword.get(opts, :timeout, 30_000)
 
-      payload = %{
-        query: operation_string,
-        variables: variables,
-        operationName: nil
-      }
+    payload = %{
+      query: operation_string,
+      variables: variables,
+      operationName: nil
+    }
 
-      case Req.post(state.client, json: payload, receive_timeout: timeout) do
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
-          {:ok, data}
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
-          Logger.warning("GraphQL #{operation_type} returned errors: #{inspect(errors)}")
-          {:ok, data}
-        {:ok, %{status: 200, body: %{"errors" => errors}}} ->
-          Logger.error("GraphQL #{operation_type} failed: #{inspect(errors)}")
-          {:error, "GraphQL errors: #{inspect(errors)}"}
-        {:ok, %{status: status, body: body}} ->
-          Logger.error("GraphQL #{operation_type} failed with HTTP #{status}: #{inspect(body)}")
-          {:error, "HTTP #{status}: #{inspect(body)}"}
-        {:error, reason} ->
-          Logger.error("GraphQL #{operation_type} request failed: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Exception during GraphQL #{operation_type}: #{inspect(error)}")
-        {:error, error}
+    case Req.post(state.client, json: payload, receive_timeout: timeout) do
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
+        {:ok, data}
+
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
+        Logger.warning("GraphQL #{operation_type} returned errors: #{inspect(errors)}")
+        {:ok, data}
+
+      {:ok, %{status: 200, body: %{"errors" => errors}}} ->
+        Logger.error("GraphQL #{operation_type} failed: #{inspect(errors)}")
+        {:error, "GraphQL errors: #{inspect(errors)}"}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("GraphQL #{operation_type} failed with HTTP #{status}: #{inspect(body)}")
+        {:error, "HTTP #{status}: #{inspect(body)}"}
+
+      {:error, reason} ->
+        Logger.error("GraphQL #{operation_type} request failed: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Exception during GraphQL #{operation_type}: #{inspect(error)}")
+      {:error, error}
   end
 
   defp execute_graphql_subscription(state, subscription_string, variables, opts) do
-    try do
-      # For now, simulate subscription with a single response
-      # In a real implementation, this would use WebSocket or Server-Sent Events
-      timeout = Keyword.get(opts, :timeout, 30_000)
+    # For now, simulate subscription with a single response
+    # In a real implementation, this would use WebSocket or Server-Sent Events
+    timeout = Keyword.get(opts, :timeout, 30_000)
 
-      payload = %{
-        query: subscription_string,
-        variables: variables,
-        operationName: nil
-      }
+    payload = %{
+      query: subscription_string,
+      variables: variables,
+      operationName: nil
+    }
 
-      case Req.post(state.client, json: payload, receive_timeout: timeout) do
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
-          # Simulate streaming by wrapping the data
-          results = [data]
-          {:ok, results}
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
-          Logger.warning("GraphQL subscription returned errors: #{inspect(errors)}")
-          results = [data]
-          {:ok, results}
-        {:ok, %{status: 200, body: %{"errors" => errors}}} ->
-          Logger.error("GraphQL subscription failed: #{inspect(errors)}")
-          {:error, "GraphQL errors: #{inspect(errors)}"}
-        {:ok, %{status: status, body: body}} ->
-          Logger.error("GraphQL subscription failed with HTTP #{status}: #{inspect(body)}")
-          {:error, "HTTP #{status}: #{inspect(body)}"}
-        {:error, reason} ->
-          Logger.error("GraphQL subscription request failed: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Exception during GraphQL subscription: #{inspect(error)}")
-        {:error, error}
+    case Req.post(state.client, json: payload, receive_timeout: timeout) do
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
+        # Simulate streaming by wrapping the data
+        results = [data]
+        {:ok, results}
+
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
+        Logger.warning("GraphQL subscription returned errors: #{inspect(errors)}")
+        results = [data]
+        {:ok, results}
+
+      {:ok, %{status: 200, body: %{"errors" => errors}}} ->
+        Logger.error("GraphQL subscription failed: #{inspect(errors)}")
+        {:error, "GraphQL errors: #{inspect(errors)}"}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("GraphQL subscription failed with HTTP #{status}: #{inspect(body)}")
+        {:error, "HTTP #{status}: #{inspect(body)}"}
+
+      {:error, reason} ->
+        Logger.error("GraphQL subscription request failed: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Exception during GraphQL subscription: #{inspect(error)}")
+      {:error, error}
   end
 
   defp introspect_graphql_schema(state, opts) do
-    try do
-      timeout = Keyword.get(opts, :timeout, 30_000)
+    timeout = Keyword.get(opts, :timeout, 30_000)
 
-      introspection_query = """
-      query IntrospectionQuery {
-        __schema {
-          queryType { name }
-          mutationType { name }
-          subscriptionType { name }
-          types {
-            ...FullType
-          }
-          directives {
-            name
-            description
-            locations
-            args {
-              ...InputValue
-            }
-          }
+    introspection_query = """
+    query IntrospectionQuery {
+      __schema {
+        queryType { name }
+        mutationType { name }
+        subscriptionType { name }
+        types {
+          ...FullType
         }
-      }
-
-      fragment FullType on __Type {
-        kind
-        name
-        description
-        fields(includeDeprecated: true) {
+        directives {
           name
           description
+          locations
           args {
             ...InputValue
           }
-          type {
-            ...TypeRef
-          }
-          isDeprecated
-          deprecationReason
-        }
-        inputFields {
-          ...InputValue
-        }
-        interfaces {
-          ...TypeRef
-        }
-        enumValues(includeDeprecated: true) {
-          name
-          description
-          isDeprecated
-          deprecationReason
-        }
-        possibleTypes {
-          ...TypeRef
         }
       }
+    }
 
-      fragment InputValue on __InputValue {
+    fragment FullType on __Type {
+      kind
+      name
+      description
+      fields(includeDeprecated: true) {
         name
         description
-        type { ...TypeRef }
-        defaultValue
+        args {
+          ...InputValue
+        }
+        type {
+          ...TypeRef
+        }
+        isDeprecated
+        deprecationReason
       }
+      inputFields {
+        ...InputValue
+      }
+      interfaces {
+        ...TypeRef
+      }
+      enumValues(includeDeprecated: true) {
+        name
+        description
+        isDeprecated
+        deprecationReason
+      }
+      possibleTypes {
+        ...TypeRef
+      }
+    }
 
-      fragment TypeRef on __Type {
+    fragment InputValue on __InputValue {
+      name
+      description
+      type { ...TypeRef }
+      defaultValue
+    }
+
+    fragment TypeRef on __Type {
+      kind
+      name
+      ofType {
         kind
         name
         ofType {
@@ -439,10 +456,6 @@ defmodule ExUtcp.Transports.Graphql.Connection do
                   ofType {
                     kind
                     name
-                    ofType {
-                      kind
-                      name
-                    }
                   }
                 }
               }
@@ -450,35 +463,39 @@ defmodule ExUtcp.Transports.Graphql.Connection do
           }
         }
       }
-      """
+    }
+    """
 
-      payload = %{
-        query: introspection_query,
-        variables: %{},
-        operationName: "IntrospectionQuery"
-      }
+    payload = %{
+      query: introspection_query,
+      variables: %{},
+      operationName: "IntrospectionQuery"
+    }
 
-      case Req.post(state.client, json: payload, receive_timeout: timeout) do
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
-          {:ok, data}
-        {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
-          Logger.warning("GraphQL introspection returned errors: #{inspect(errors)}")
-          {:ok, data}
-        {:ok, %{status: 200, body: %{"errors" => errors}}} ->
-          Logger.error("GraphQL introspection failed: #{inspect(errors)}")
-          {:error, "GraphQL errors: #{inspect(errors)}"}
-        {:ok, %{status: status, body: body}} ->
-          Logger.error("GraphQL introspection failed with HTTP #{status}: #{inspect(body)}")
-          {:error, "HTTP #{status}: #{inspect(body)}"}
-        {:error, reason} ->
-          Logger.error("GraphQL introspection request failed: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      error ->
-        Logger.error("Exception during GraphQL introspection: #{inspect(error)}")
-        {:error, error}
+    case Req.post(state.client, json: payload, receive_timeout: timeout) do
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => nil}}} ->
+        {:ok, data}
+
+      {:ok, %{status: 200, body: %{"data" => data, "errors" => errors}}} ->
+        Logger.warning("GraphQL introspection returned errors: #{inspect(errors)}")
+        {:ok, data}
+
+      {:ok, %{status: 200, body: %{"errors" => errors}}} ->
+        Logger.error("GraphQL introspection failed: #{inspect(errors)}")
+        {:error, "GraphQL errors: #{inspect(errors)}"}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("GraphQL introspection failed with HTTP #{status}: #{inspect(body)}")
+        {:error, "HTTP #{status}: #{inspect(body)}"}
+
+      {:error, reason} ->
+        Logger.error("GraphQL introspection request failed: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    error ->
+      Logger.error("Exception during GraphQL introspection: #{inspect(error)}")
+      {:error, error}
   end
 
   defp build_headers(provider) do
@@ -505,18 +522,21 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         case auth.location do
           "header" ->
             Map.put(headers, "Authorization", "Bearer #{auth.api_key}")
+
           "query" ->
             # For query parameters, we'd need to modify the URL
             headers
         end
+
       :basic ->
         credentials = Base.encode64("#{auth.username}:#{auth.password}")
         Map.put(headers, "Authorization", "Basic #{credentials}")
+
       :oauth2 ->
         Map.put(headers, "Authorization", "Bearer #{auth.access_token}")
+
       _ ->
         headers
     end
   end
-
 end

@@ -69,8 +69,10 @@ defmodule ExUtcp.Transports.Mcp.Message do
     case Jason.decode(json_string) do
       {:ok, %{"jsonrpc" => "2.0"} = message} ->
         parse_jsonrpc_message(message)
+
       {:ok, message} ->
         {:ok, message}
+
       {:error, reason} ->
         {:error, "Failed to parse JSON: #{inspect(reason)}"}
     end
@@ -84,10 +86,14 @@ defmodule ExUtcp.Transports.Mcp.Message do
     cond do
       not Map.has_key?(message, "jsonrpc") ->
         {:error, "Missing jsonrpc field"}
+
       message["jsonrpc"] != "2.0" ->
         {:error, "Invalid jsonrpc version: #{message["jsonrpc"]}"}
-      not Map.has_key?(message, "method") and not Map.has_key?(message, "result") and not Map.has_key?(message, "error") ->
+
+      not Map.has_key?(message, "method") and not Map.has_key?(message, "result") and
+          not Map.has_key?(message, "error") ->
         {:error, "Message must have method, result, or error field"}
+
       true ->
         :ok
     end
@@ -168,8 +174,12 @@ defmodule ExUtcp.Transports.Mcp.Message do
     case validate_message(message) do
       :ok ->
         {code, message_text, data} = extract_error(message)
-        {:error, "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
-      {:error, reason} -> {:error, reason}
+
+        {:error,
+         "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

@@ -6,6 +6,7 @@ defmodule ExUtcp.Monitoring.Performance do
   """
 
   use GenServer
+
   alias ExUtcp.Monitoring.Metrics
 
   @enforce_keys [:config, :start_time]
@@ -25,7 +26,7 @@ defmodule ExUtcp.Monitoring.Performance do
   @doc """
   Measures the execution time of a function and emits telemetry.
   """
-  @spec measure(String.t(), map(), (() -> any())) :: any()
+  @spec measure(String.t(), map(), (-> any())) :: any()
   def measure(operation_name, metadata \\ %{}, fun) do
     start_time = System.monotonic_time(:millisecond)
 
@@ -78,7 +79,7 @@ defmodule ExUtcp.Monitoring.Performance do
   @doc """
   Measures tool call performance.
   """
-  @spec measure_tool_call(String.t(), String.t(), map(), (() -> any())) :: any()
+  @spec measure_tool_call(String.t(), String.t(), map(), (-> any())) :: any()
   def measure_tool_call(tool_name, provider_name, args, fun) do
     metadata = %{
       tool_name: tool_name,
@@ -92,7 +93,7 @@ defmodule ExUtcp.Monitoring.Performance do
   @doc """
   Measures search performance.
   """
-  @spec measure_search(String.t(), atom(), map(), (() -> any())) :: any()
+  @spec measure_search(String.t(), atom(), map(), (-> any())) :: any()
   def measure_search(query, algorithm, filters, fun) do
     metadata = %{
       query_length: String.length(query),
@@ -115,7 +116,7 @@ defmodule ExUtcp.Monitoring.Performance do
   @doc """
   Measures connection performance.
   """
-  @spec measure_connection(String.t(), atom(), (() -> any())) :: any()
+  @spec measure_connection(String.t(), atom(), (-> any())) :: any()
   def measure_connection(provider_name, transport_type, fun) do
     metadata = %{
       provider_name: provider_name,
@@ -130,34 +131,36 @@ defmodule ExUtcp.Monitoring.Performance do
   """
   @spec get_operation_stats(String.t()) :: map()
   def get_operation_stats(operation_name) do
-    try do
-      histogram_data = Metrics.get_metric("operation_duration_ms")
+    histogram_data = Metrics.get_metric("operation_duration_ms")
 
-      case histogram_data do
-        nil -> %{operation: operation_name, stats: :no_data}
-        data ->
-          # Calculate statistics from histogram data
-          operation_data = data
+    case histogram_data do
+      nil ->
+        %{operation: operation_name, stats: :no_data}
+
+      data ->
+        # Calculate statistics from histogram data
+        operation_data =
+          data
           |> Enum.filter(fn {_key, metric} ->
             metric.labels[:operation] == operation_name
           end)
 
-          if Enum.empty?(operation_data) do
-            %{operation: operation_name, stats: :no_data}
-          else
-            values = Enum.flat_map(operation_data, fn {_key, metric} ->
+        if Enum.empty?(operation_data) do
+          %{operation: operation_name, stats: :no_data}
+        else
+          values =
+            Enum.flat_map(operation_data, fn {_key, metric} ->
               metric.values || [metric.value]
             end)
 
-            %{
-              operation: operation_name,
-              stats: calculate_statistics(values)
-            }
-          end
-      end
-    rescue
-      _ -> %{operation: operation_name, stats: :unavailable}
+          %{
+            operation: operation_name,
+            stats: calculate_statistics(values)
+          }
+        end
     end
+  rescue
+    _ -> %{operation: operation_name, stats: :unavailable}
   end
 
   @doc """
@@ -165,25 +168,23 @@ defmodule ExUtcp.Monitoring.Performance do
   """
   @spec get_performance_summary() :: map()
   def get_performance_summary do
-    try do
-      metrics = Metrics.get_metrics()
+    metrics = Metrics.get_metrics()
 
+    %{
+      operations: get_all_operation_stats(metrics),
+      system: get_system_performance(),
+      alerts: get_performance_alerts(metrics),
+      timestamp: System.system_time(:millisecond)
+    }
+  rescue
+    _ ->
       %{
-        operations: get_all_operation_stats(metrics),
+        operations: %{},
         system: get_system_performance(),
-        alerts: get_performance_alerts(metrics),
-        timestamp: System.system_time(:millisecond)
+        alerts: [],
+        timestamp: System.system_time(:millisecond),
+        status: :metrics_unavailable
       }
-    rescue
-      _ ->
-        %{
-          operations: %{},
-          system: get_system_performance(),
-          alerts: [],
-          timestamp: System.system_time(:millisecond),
-          status: :metrics_unavailable
-        }
-    end
   end
 
   @doc """
@@ -191,23 +192,21 @@ defmodule ExUtcp.Monitoring.Performance do
   """
   @spec get_performance_alerts(map()) :: [map()]
   def get_performance_alerts(metrics \\ nil) do
-    try do
-      metrics = metrics || Metrics.get_metrics()
-      alerts = []
+    metrics = metrics || Metrics.get_metrics()
+    alerts = []
 
-      # Check for slow operations
-      alerts = alerts ++ check_slow_operations(metrics)
+    # Check for slow operations
+    alerts = alerts ++ check_slow_operations(metrics)
 
-      # Check for high error rates
-      alerts = alerts ++ check_error_rates(metrics)
+    # Check for high error rates
+    alerts = alerts ++ check_error_rates(metrics)
 
-      # Check for memory usage
-      alerts = alerts ++ check_memory_alerts()
+    # Check for memory usage
+    alerts = alerts ++ check_memory_alerts()
 
-      alerts
-    rescue
-      _ -> []
-    end
+    alerts
+  rescue
+    _ -> []
   end
 
   @doc """
@@ -233,7 +232,8 @@ defmodule ExUtcp.Monitoring.Performance do
         high_error_rate: Keyword.get(opts, :high_error_rate, 0.1),
         high_memory_mb: Keyword.get(opts, :high_memory_threshold, 500)
       },
-      cleanup_interval: Keyword.get(opts, :cleanup_interval, 300_000) # 5 minutes
+      # 5 minutes
+      cleanup_interval: Keyword.get(opts, :cleanup_interval, 300_000)
     }
 
     state = %__MODULE__{
@@ -382,9 +382,11 @@ defmodule ExUtcp.Monitoring.Performance do
   defp get_scheduler_utilization do
     # Get scheduler utilization (simplified)
     schedulers = :erlang.system_info(:schedulers_online)
+
     %{
       schedulers_online: schedulers,
-      utilization: "N/A" # Would require more complex calculation
+      # Would require more complex calculation
+      utilization: "N/A"
     }
   end
 
@@ -415,12 +417,14 @@ defmodule ExUtcp.Monitoring.Performance do
     memory_mb = memory / 1_000_000
 
     if memory_mb > 500 do
-      [%{
-        type: :memory,
-        severity: :warning,
-        message: "High memory usage: #{Float.round(memory_mb, 2)} MB",
-        timestamp: System.system_time(:millisecond)
-      }]
+      [
+        %{
+          type: :memory,
+          severity: :warning,
+          message: "High memory usage: #{Float.round(memory_mb, 2)} MB",
+          timestamp: System.system_time(:millisecond)
+        }
+      ]
     else
       []
     end

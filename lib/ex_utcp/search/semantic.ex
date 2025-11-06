@@ -13,16 +13,17 @@ defmodule ExUtcp.Search.Semantic do
   @spec create_tools_index([Types.tool()]) :: Haystack.t()
   def create_tools_index(tools) do
     # Create Haystack index with tool documents
-    documents = Enum.map(tools, fn tool ->
-      %{
-        id: tool.name,
-        title: tool.name,
-        content: tool.definition.description,
-        provider_name: tool.provider_name,
-        parameters: Jason.encode!(tool.definition.parameters || %{}),
-        response: Jason.encode!(tool.definition.response || %{})
-      }
-    end)
+    documents =
+      Enum.map(tools, fn tool ->
+        %{
+          id: tool.name,
+          title: tool.name,
+          content: tool.definition.description,
+          provider_name: tool.provider_name,
+          parameters: Jason.encode!(tool.definition.parameters || %{}),
+          response: Jason.encode!(tool.definition.response || %{})
+        }
+      end)
 
     # Create Haystack index with documents
     Haystack.new(documents)
@@ -72,8 +73,6 @@ defmodule ExUtcp.Search.Semantic do
             match_type: :semantic,
             matched_fields: ["content", "title"]
           }
-        else
-          nil
         end
       end)
       |> Enum.reject(&is_nil/1)
@@ -103,8 +102,6 @@ defmodule ExUtcp.Search.Semantic do
           match_type: :semantic,
           matched_fields: get_semantic_matched_fields(tool, query_keywords)
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -130,8 +127,6 @@ defmodule ExUtcp.Search.Semantic do
           match_type: :semantic,
           matched_fields: get_provider_semantic_matched_fields(provider, query_keywords)
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -156,8 +151,6 @@ defmodule ExUtcp.Search.Semantic do
           match_type: :semantic,
           matched_fields: ["description", "name"]
         }
-      else
-        nil
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -170,12 +163,46 @@ defmodule ExUtcp.Search.Semantic do
   @spec extract_keywords(String.t()) :: [String.t()]
   def extract_keywords(text) do
     # Common stop words to filter out
-    stop_words = MapSet.new([
-      "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-      "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
-      "to", "was", "will", "with", "or", "but", "not", "this", "can",
-      "have", "do", "does", "get", "set", "use", "using", "used"
-    ])
+    stop_words =
+      MapSet.new([
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "he",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "that",
+        "the",
+        "to",
+        "was",
+        "will",
+        "with",
+        "or",
+        "but",
+        "not",
+        "this",
+        "can",
+        "have",
+        "do",
+        "does",
+        "get",
+        "set",
+        "use",
+        "using",
+        "used"
+      ])
 
     text
     |> String.downcase()
@@ -225,11 +252,13 @@ defmodule ExUtcp.Search.Semantic do
   defp calculate_semantic_score(tool, query_keywords, opts) do
     # Extract keywords from tool name and description
     name_keywords = extract_keywords(tool.name)
-    desc_keywords = if Map.get(opts, :include_descriptions, true) do
-      extract_keywords(tool.definition.description)
-    else
-      []
-    end
+
+    desc_keywords =
+      if Map.get(opts, :include_descriptions, true) do
+        extract_keywords(tool.definition.description)
+      else
+        []
+      end
 
     # Calculate different types of similarity
     contextual_sim = contextual_similarity(tool, query_keywords)
@@ -242,7 +271,7 @@ defmodule ExUtcp.Search.Semantic do
     name_sim = keyword_similarity(name_keywords, query_keywords)
     desc_sim = keyword_similarity(desc_keywords, query_keywords)
 
-    (name_sim * name_weight) + (desc_sim * desc_weight) + (contextual_sim * context_weight)
+    name_sim * name_weight + desc_sim * desc_weight + contextual_sim * context_weight
   end
 
   defp calculate_provider_semantic_score(provider, query_keywords) do
@@ -262,13 +291,14 @@ defmodule ExUtcp.Search.Semantic do
     desc_similarity = keyword_similarity(reference_keywords, tool2_keywords)
 
     # Calculate name similarity
-    name_similarity = keyword_similarity(
-      extract_keywords(tool1.name),
-      extract_keywords(tool2.name)
-    )
+    name_similarity =
+      keyword_similarity(
+        extract_keywords(tool1.name),
+        extract_keywords(tool2.name)
+      )
 
     # Weighted combination
-    (desc_similarity * 0.7) + (name_similarity * 0.3)
+    desc_similarity * 0.7 + name_similarity * 0.3
   end
 
   defp get_semantic_matched_fields(tool, query_keywords) do
@@ -277,17 +307,19 @@ defmodule ExUtcp.Search.Semantic do
     name_keywords = extract_keywords(tool.name)
     desc_keywords = extract_keywords(tool.definition.description)
 
-    fields = if keyword_similarity(name_keywords, query_keywords) > 0.1 do
-      ["name" | fields]
-    else
-      fields
-    end
+    fields =
+      if keyword_similarity(name_keywords, query_keywords) > 0.1 do
+        ["name" | fields]
+      else
+        fields
+      end
 
-    fields = if keyword_similarity(desc_keywords, query_keywords) > 0.1 do
-      ["description" | fields]
-    else
-      fields
-    end
+    fields =
+      if keyword_similarity(desc_keywords, query_keywords) > 0.1 do
+        ["description" | fields]
+      else
+        fields
+      end
 
     fields
   end
@@ -298,17 +330,19 @@ defmodule ExUtcp.Search.Semantic do
     name_keywords = extract_keywords(provider.name)
     type_keywords = [Atom.to_string(provider.type)]
 
-    fields = if keyword_similarity(name_keywords, query_keywords) > 0.1 do
-      ["name" | fields]
-    else
-      fields
-    end
+    fields =
+      if keyword_similarity(name_keywords, query_keywords) > 0.1 do
+        ["name" | fields]
+      else
+        fields
+      end
 
-    fields = if keyword_similarity(type_keywords, query_keywords) > 0.1 do
-      ["type" | fields]
-    else
-      fields
-    end
+    fields =
+      if keyword_similarity(type_keywords, query_keywords) > 0.1 do
+        ["type" | fields]
+      else
+        fields
+      end
 
     fields
   end
@@ -318,20 +352,22 @@ defmodule ExUtcp.Search.Semantic do
     context_keywords = []
 
     # Add keywords from parameters
-    context_keywords = if Map.has_key?(tool.definition, :parameters) do
-      param_keywords = extract_parameter_keywords(tool.definition.parameters)
-      context_keywords ++ param_keywords
-    else
-      context_keywords
-    end
+    context_keywords =
+      if Map.has_key?(tool.definition, :parameters) do
+        param_keywords = extract_parameter_keywords(tool.definition.parameters)
+        context_keywords ++ param_keywords
+      else
+        context_keywords
+      end
 
     # Add keywords from response schema
-    context_keywords = if Map.has_key?(tool.definition, :response) do
-      response_keywords = extract_response_keywords(tool.definition.response)
-      context_keywords ++ response_keywords
-    else
-      context_keywords
-    end
+    context_keywords =
+      if Map.has_key?(tool.definition, :response) do
+        response_keywords = extract_response_keywords(tool.definition.response)
+        context_keywords ++ response_keywords
+      else
+        context_keywords
+      end
 
     context_keywords
   end
@@ -342,10 +378,13 @@ defmodule ExUtcp.Search.Semantic do
     |> Map.get("properties", %{})
     |> Enum.flat_map(fn {param_name, param_def} ->
       name_keywords = extract_keywords(param_name)
-      desc_keywords = case param_def do
-        %{"description" => desc} -> extract_keywords(desc)
-        _ -> []
-      end
+
+      desc_keywords =
+        case param_def do
+          %{"description" => desc} -> extract_keywords(desc)
+          _ -> []
+        end
+
       name_keywords ++ desc_keywords
     end)
   end
@@ -358,10 +397,13 @@ defmodule ExUtcp.Search.Semantic do
     |> Map.get("properties", %{})
     |> Enum.flat_map(fn {field_name, field_def} ->
       name_keywords = extract_keywords(field_name)
-      desc_keywords = case field_def do
-        %{"description" => desc} -> extract_keywords(desc)
-        _ -> []
-      end
+
+      desc_keywords =
+        case field_def do
+          %{"description" => desc} -> extract_keywords(desc)
+          _ -> []
+        end
+
       name_keywords ++ desc_keywords
     end)
   end

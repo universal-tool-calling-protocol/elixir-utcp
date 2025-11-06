@@ -474,6 +474,18 @@ config :ex_utcp, ExUtcp.Monitoring.PromEx,
   ]
 ```
 
+## Comparison with Python UTCP
+
+ExUtcp is an independent Elixir implementation of the UTCP specification. For a detailed comparison with the official Python implementation, see our [Comparison Study](docs/COMPARISON_STUDY.md).
+
+**Key Differences**:
+- **ExUtcp**: 8 transports (includes WebSocket, gRPC, GraphQL, TCP/UDP, WebRTC)
+- **Python UTCP**: 6 transports (HTTP, SSE, CLI, MCP, Text, Streamable HTTP)
+- **ExUtcp**: Advanced search, monitoring, and health checks
+- **Python UTCP**: Plugin architecture, official implementation
+
+Both implementations follow the UTCP specification and excel in different areas.
+
 ## Contributing
 
 1. Fork the repository

@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.McpMoxSimpleTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.Mcp
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -37,7 +38,7 @@ defmodule ExUtcp.Transports.McpMoxSimpleTest do
 
       # Test with invalid provider type
       assert {:error, "MCP transport can only be used with MCP providers"} =
-        Mcp.register_tool_provider(invalid_provider)
+               Mcp.register_tool_provider(invalid_provider)
     end
 
     @tag :genserver_lifecycle

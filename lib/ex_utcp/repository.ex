@@ -22,7 +22,8 @@ defmodule ExUtcp.Repository do
   @doc """
   Saves a provider with its associated tools.
   """
-  @spec save_provider_with_tools(T.tool_repository(), T.provider(), [T.tool()]) :: T.tool_repository()
+  @spec save_provider_with_tools(T.tool_repository(), T.provider(), [T.tool()]) ::
+          T.tool_repository()
   def save_provider_with_tools(repo, provider, tools) do
     provider_name = ExUtcp.Providers.get_name(provider)
 
@@ -50,7 +51,8 @@ defmodule ExUtcp.Repository do
   @doc """
   Adds a tool to the repository.
   """
-  @spec add_tool(T.tool_repository(), T.tool()) :: {:ok, T.tool_repository()} | {:error, String.t()}
+  @spec add_tool(T.tool_repository(), T.tool()) ::
+          {:ok, T.tool_repository()} | {:error, String.t()}
   def add_tool(repo, tool) do
     provider_name = tool.provider_name
 
@@ -58,6 +60,7 @@ defmodule ExUtcp.Repository do
     case Map.get(repo.providers, provider_name) do
       nil ->
         {:error, "Provider #{provider_name} not found"}
+
       _provider ->
         # Add tool to the provider's tools
         existing_tools = Map.get(repo.tools, provider_name, [])
@@ -111,11 +114,10 @@ defmodule ExUtcp.Repository do
   def remove_tool(repo, tool_name) do
     updated_tools =
       repo.tools
-      |> Enum.map(fn {provider_name, tools} ->
+      |> Map.new(fn {provider_name, tools} ->
         filtered_tools = Enum.reject(tools, &(&1.name == tool_name))
         {provider_name, filtered_tools}
       end)
-      |> Map.new()
 
     Map.put(repo, :tools, updated_tools)
   end

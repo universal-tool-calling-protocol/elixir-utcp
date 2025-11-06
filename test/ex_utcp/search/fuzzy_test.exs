@@ -1,8 +1,9 @@
 defmodule ExUtcp.Search.FuzzyTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   alias ExUtcp.Search.Fuzzy
+
+  @moduletag :unit
 
   describe "String Similarity" do
     test "calculates exact match similarity" do
@@ -28,7 +29,8 @@ defmodule ExUtcp.Search.FuzzyTest do
       similarity = Fuzzy.best_similarity("test", "tset")
       assert is_float(similarity)
       assert similarity >= 0.0 and similarity <= 1.0
-      assert similarity > 0.5  # Should be high for similar strings
+      # Should be high for similar strings
+      assert similarity > 0.5
     end
 
     test "levenshtein_distance calculates correctly" do
@@ -42,7 +44,6 @@ defmodule ExUtcp.Search.FuzzyTest do
       assert is_float(similarity)
       assert similarity >= 0.0 and similarity <= 1.0
     end
-
   end
 
   describe "Tool Search" do
@@ -53,7 +54,8 @@ defmodule ExUtcp.Search.FuzzyTest do
         create_test_tool("list_files", "List directory files")
       ]
 
-      results = Fuzzy.search_tools(tools, "get_usr", %{threshold: 0.5, include_descriptions: true})
+      results =
+        Fuzzy.search_tools(tools, "get_usr", %{threshold: 0.5, include_descriptions: true})
 
       assert is_list(results)
       assert length(results) >= 1
@@ -77,9 +79,11 @@ defmodule ExUtcp.Search.FuzzyTest do
       assert length(results) >= 2
 
       # Should find tools with "user" in description
-      user_tools = Enum.filter(results, fn result ->
-        String.contains?(result.tool.definition.description, "user")
-      end)
+      user_tools =
+        Enum.filter(results, fn result ->
+          String.contains?(result.tool.definition.description, "user")
+        end)
+
       assert length(user_tools) >= 2
     end
   end
