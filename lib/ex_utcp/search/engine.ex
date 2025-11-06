@@ -6,16 +6,17 @@ defmodule ExUtcp.Search.Engine do
   """
 
   use GenServer
+
   alias ExUtcp.Types
 
   @enforce_keys [:tools_index, :providers_index, :config]
   defstruct [:tools_index, :providers_index, :config]
 
   @type t :: %__MODULE__{
-    tools_index: %{String.t() => Types.tool()},
-    providers_index: %{String.t() => Types.provider_config()},
-    config: map()
-  }
+          tools_index: %{String.t() => Types.tool()},
+          providers_index: %{String.t() => Types.provider_config()},
+          config: map()
+        }
 
   @doc """
   Creates a new search engine.

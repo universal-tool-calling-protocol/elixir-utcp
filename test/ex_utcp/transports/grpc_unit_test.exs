@@ -7,12 +7,15 @@ defmodule ExUtcp.Transports.GrpcUnitTest do
     setup do
       # Clean up any existing gRPC transport
       case Process.whereis(Grpc) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           try do
             if Process.alive?(pid) do
               GenServer.stop(pid, :normal, 500)
-              Process.sleep(300) # Give it more time to stop
+              # Give it more time to stop
+              Process.sleep(300)
             end
           rescue
             _ -> :ok
@@ -21,6 +24,7 @@ defmodule ExUtcp.Transports.GrpcUnitTest do
 
       :ok
     end
+
     test "creates new transport" do
       transport = Grpc.new()
 
@@ -71,7 +75,7 @@ defmodule ExUtcp.Transports.GrpcUnitTest do
 
       # Test with invalid provider type
       assert {:error, "gRPC transport can only be used with gRPC providers"} =
-        Grpc.register_tool_provider(invalid_provider)
+               Grpc.register_tool_provider(invalid_provider)
     end
 
     test "deregister_tool_provider always succeeds" do

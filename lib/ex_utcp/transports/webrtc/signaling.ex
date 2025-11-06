@@ -9,6 +9,7 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
   """
 
   use GenServer
+
   require Logger
 
   @enforce_keys [:server_url, :parent_pid]
@@ -21,12 +22,12 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
   ]
 
   @type t :: %__MODULE__{
-    server_url: String.t(),
-    parent_pid: pid(),
-    websocket_pid: pid() | nil,
-    peer_id: String.t() | nil,
-    connection_state: atom()
-  }
+          server_url: String.t(),
+          parent_pid: pid(),
+          websocket_pid: pid() | nil,
+          peer_id: String.t() | nil,
+          connection_state: atom()
+        }
 
   @doc """
   Starts the signaling client.
@@ -144,10 +145,7 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
       # For now, we'll simulate it
       peer_id = generate_peer_id()
 
-      new_state = %{state |
-        peer_id: peer_id,
-        connection_state: :connected
-      }
+      new_state = %{state | peer_id: peer_id, connection_state: :connected}
 
       Logger.info("Connected to signaling server with peer ID: #{peer_id}")
       {:noreply, new_state}
@@ -167,6 +165,7 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
     case Jason.decode(data) do
       {:ok, message} ->
         handle_signaling_message(message, state)
+
       {:error, reason} ->
         Logger.error("Failed to decode signaling message: #{inspect(reason)}")
         {:noreply, state}
@@ -188,13 +187,17 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
     {:noreply, state}
   end
 
-  defp handle_signaling_message(%{"type" => "ice_candidate", "candidate" => candidate_data}, state) do
+  defp handle_signaling_message(
+         %{"type" => "ice_candidate", "candidate" => candidate_data},
+         state
+       ) do
     # Forward ICE candidate to parent
     candidate = %{
       candidate: candidate_data["candidate"],
       sdp_mid: candidate_data["sdp_mid"],
       sdp_m_line_index: candidate_data["sdp_m_line_index"]
     }
+
     send(state.parent_pid, {:signaling, :ice_candidate, candidate})
     {:noreply, state}
   end
@@ -205,17 +208,18 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
   end
 
   defp send_signaling_message(websocket_pid, message) do
-    if websocket_pid != nil do
+    if websocket_pid == nil do
+      {:error, "Signaling connection not established"}
+      # In a real implementation, send via WebSocket
+      # For now, we'll simulate success
+    else
       case Jason.encode(message) do
         {:ok, json} ->
-          # In a real implementation, send via WebSocket
-          # For now, we'll simulate success
           :ok
+
         {:error, reason} ->
           {:error, "Failed to encode message: #{inspect(reason)}"}
       end
-    else
-      {:error, "Signaling connection not established"}
     end
   end
 

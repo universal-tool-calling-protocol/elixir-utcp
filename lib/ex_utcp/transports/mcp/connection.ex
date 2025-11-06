@@ -3,12 +3,14 @@ defmodule ExUtcp.Transports.Mcp.Connection do
   Manages MCP connections with JSON-RPC 2.0 communication.
   """
 
-  use GenServer
-  require Logger
   @behaviour ExUtcp.Transports.Mcp.ConnectionBehaviour
+
+  use GenServer
 
   alias ExUtcp.Auth
   alias ExUtcp.Transports.Mcp.Message
+
+  require Logger
 
   defstruct [
     :provider,
@@ -122,6 +124,7 @@ defmodule ExUtcp.Transports.Mcp.Connection do
       {:ok, new_state} ->
         result = execute_tool_call(tool_name, args, new_state, opts)
         {:reply, result, update_last_used_impl(new_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -133,6 +136,7 @@ defmodule ExUtcp.Transports.Mcp.Connection do
       {:ok, new_state} ->
         result = execute_tool_stream(tool_name, args, new_state, opts)
         {:reply, result, update_last_used_impl(new_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -144,6 +148,7 @@ defmodule ExUtcp.Transports.Mcp.Connection do
       {:ok, new_state} ->
         result = execute_request(method, params, new_state, opts)
         {:reply, result, update_last_used_impl(new_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -155,6 +160,7 @@ defmodule ExUtcp.Transports.Mcp.Connection do
       {:ok, new_state} ->
         result = execute_notification(method, params, new_state, opts)
         {:reply, result, update_last_used_impl(new_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -179,33 +185,35 @@ defmodule ExUtcp.Transports.Mcp.Connection do
   # Private functions
 
   defp establish_connection(state) do
-    try do
-      client = build_http_client(state.provider)
+    client = build_http_client(state.provider)
 
-      # Test connection with a ping request
-      ping_request = Message.build_request("ping", %{})
+    # Test connection with a ping request
+    ping_request = Message.build_request("ping", %{})
 
-      case send_http_request(client, ping_request) do
-        {:ok, %{status: 200, body: _body}} ->
-          new_state = %{state |
-            client: client,
-            connection_state: :connected,
-            retry_count: 0
-          }
-          Logger.info("MCP connection established to #{state.provider.url}")
-          {:ok, new_state}
-        {:error, reason} ->
-          Logger.error("Failed to connect to MCP endpoint #{state.provider.url}: #{inspect(reason)}")
-          {:error, reason}
-        {:ok, %{status: status, body: body}} ->
-          Logger.error("Failed to connect to MCP endpoint #{state.provider.url} with HTTP #{status}: #{inspect(body)}")
-          {:error, "HTTP #{status}: #{inspect(body)}"}
-      end
-    rescue
-      error ->
-        Logger.error("Exception during MCP connection: #{inspect(error)}")
-        {:error, error}
+    case send_http_request(client, ping_request) do
+      {:ok, %{status: 200, body: _body}} ->
+        new_state = %{state | client: client, connection_state: :connected, retry_count: 0}
+        Logger.info("MCP connection established to #{state.provider.url}")
+        {:ok, new_state}
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to connect to MCP endpoint #{state.provider.url}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error(
+          "Failed to connect to MCP endpoint #{state.provider.url} with HTTP #{status}: #{inspect(body)}"
+        )
+
+        {:error, "HTTP #{status}: #{inspect(body)}"}
     end
+  rescue
+    error ->
+      Logger.error("Exception during MCP connection: #{inspect(error)}")
+      {:error, error}
   end
 
   defp ensure_connection(state) do
@@ -216,10 +224,11 @@ defmodule ExUtcp.Transports.Mcp.Connection do
   end
 
   defp execute_tool_call(tool_name, args, state, _opts) do
-    request = Message.build_request("tools/call", %{
-      name: tool_name,
-      arguments: args
-    })
+    request =
+      Message.build_request("tools/call", %{
+        name: tool_name,
+        arguments: args
+      })
 
     case send_http_request(state.client, request) do
       {:ok, %{status: 200, body: body}} ->
@@ -227,8 +236,10 @@ defmodule ExUtcp.Transports.Mcp.Connection do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, "Failed to parse response: #{inspect(reason)}"}
         end
+
       {:error, reason} ->
         {:error, "HTTP request failed: #{inspect(reason)}"}
+
       {:ok, %{status: status, body: body}} ->
         {:error, "HTTP #{status}: #{inspect(body)}"}
     end
@@ -240,15 +251,19 @@ defmodule ExUtcp.Transports.Mcp.Connection do
     case execute_tool_call(tool_name, args, state, opts) do
       {:ok, result} ->
         # Simulate streaming by chunking the result
-        stream = Stream.map([result], fn data ->
-          case data do
-            %{"content" => content} when is_list(content) ->
-              Enum.map(content, &%{"chunk" => &1})
-            _ ->
-              [%{"chunk" => data}]
-          end
-        end)
+        stream =
+          Stream.map([result], fn data ->
+            case data do
+              %{"content" => content} when is_list(content) ->
+                Enum.map(content, &%{"chunk" => &1})
+
+              _ ->
+                [%{"chunk" => data}]
+            end
+          end)
+
         {:ok, stream}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -263,8 +278,10 @@ defmodule ExUtcp.Transports.Mcp.Connection do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, "Failed to parse response: #{inspect(reason)}"}
         end
+
       {:error, reason} ->
         {:error, "HTTP request failed: #{inspect(reason)}"}
+
       {:ok, %{status: status, body: body}} ->
         {:error, "HTTP #{status}: #{inspect(body)}"}
     end

@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.WebSocketMoxSimpleTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.WebSocket
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -38,7 +39,7 @@ defmodule ExUtcp.Transports.WebSocketMoxSimpleTest do
 
       # Test with invalid provider type
       assert {:error, "WebSocket transport can only be used with WebSocket providers"} =
-        WebSocket.register_tool_provider(invalid_provider)
+               WebSocket.register_tool_provider(invalid_provider)
     end
 
     @tag :genserver_lifecycle
@@ -70,17 +71,20 @@ defmodule ExUtcp.Transports.WebSocketMoxSimpleTest do
     end
 
     test "handles retry configuration" do
-      transport = WebSocket.new(
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      )
+      transport =
+        WebSocket.new(
+          max_retries: 5,
+          retry_delay: 2000,
+          backoff_multiplier: 2.0
+        )
+
       assert %WebSocket{} = transport
+
       assert transport.retry_config == %{
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      }
+               max_retries: 5,
+               retry_delay: 2000,
+               backoff_multiplier: 2.0
+             }
     end
 
     test "handles connection pool configuration" do

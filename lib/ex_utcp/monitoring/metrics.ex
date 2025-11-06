@@ -6,6 +6,7 @@ defmodule ExUtcp.Monitoring.Metrics do
   """
 
   use GenServer
+
   require Logger
 
   @enforce_keys [:metrics, :config]
@@ -91,7 +92,8 @@ defmodule ExUtcp.Monitoring.Metrics do
   @impl GenServer
   def init(opts) do
     config = %{
-      retention_period: Keyword.get(opts, :retention_period, 3600), # 1 hour
+      # 1 hour
+      retention_period: Keyword.get(opts, :retention_period, 3600),
       max_metrics: Keyword.get(opts, :max_metrics, 1000),
       enable_cleanup: Keyword.get(opts, :enable_cleanup, true)
     }
@@ -208,7 +210,8 @@ defmodule ExUtcp.Monitoring.Metrics do
 
     put_in(metrics, [metric_name, key], %{
       type: :histogram,
-      values: [value | current_values] |> Enum.take(1000), # Keep last 1000 values
+      # Keep last 1000 values
+      values: [value | current_values] |> Enum.take(1000),
       labels: labels,
       timestamp: System.system_time(:millisecond)
     })
@@ -223,33 +226,35 @@ defmodule ExUtcp.Monitoring.Metrics do
 
     put_in(metrics, [metric_name, key], %{
       type: :summary,
-      values: [value | current_values] |> Enum.take(1000), # Keep last 1000 values
+      # Keep last 1000 values
+      values: [value | current_values] |> Enum.take(1000),
       labels: labels,
       timestamp: System.system_time(:millisecond)
     })
   end
 
   defp build_metric_key(metric_name, labels) do
-    labels_string = labels
-    |> Enum.sort()
-    |> Enum.map(fn {k, v} -> "#{k}=#{v}" end)
-    |> Enum.join(",")
+    labels_string =
+      labels
+      |> Enum.sort()
+      |> Enum.map_join(",", fn {k, v} -> "#{k}=#{v}" end)
 
     "#{metric_name}[#{labels_string}]"
   end
 
   defp cleanup_old_metrics(metrics, retention_period_seconds) do
-    cutoff_time = System.system_time(:millisecond) - (retention_period_seconds * 1000)
+    cutoff_time = System.system_time(:millisecond) - retention_period_seconds * 1000
 
     Enum.map(metrics, fn {metric_name, metric_data} ->
-      cleaned_data = Enum.filter(metric_data, fn {_key, data} ->
-        data.timestamp > cutoff_time
-      end)
-      |> Enum.into(%{})
+      cleaned_data =
+        Enum.filter(metric_data, fn {_key, data} ->
+          data.timestamp > cutoff_time
+        end)
+        |> Map.new()
 
       {metric_name, cleaned_data}
     end)
-    |> Enum.into(%{})
+    |> Map.new()
   end
 
   defp build_metrics_summary(state) do

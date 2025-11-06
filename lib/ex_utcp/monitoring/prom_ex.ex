@@ -61,7 +61,6 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
             description: "Total memory usage",
             unit: :byte
           ),
-
           last_value("ex_utcp.system.memory.processes.bytes",
             event_name: [:ex_utcp, :system, :memory],
             measurement: :processes,
@@ -91,7 +90,6 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         description: "Total number of tool calls",
         tags: [:tool_name, :provider_name, :status]
       ),
-
       distribution(
         "ex_utcp.tool_call.duration.milliseconds",
         event_name: [:ex_utcp, :tool_call],
@@ -109,7 +107,6 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         description: "Total number of searches",
         tags: [:algorithm]
       ),
-
       distribution(
         "ex_utcp.search.duration.milliseconds",
         event_name: [:ex_utcp, :search],
@@ -119,7 +116,6 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         unit: :millisecond,
         buckets: [1, 5, 10, 50, 100, 500, 1000]
       ),
-
       distribution(
         "ex_utcp.search.results.count",
         event_name: [:ex_utcp, :search],
@@ -144,7 +140,6 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         description: "Total connection events",
         tags: [:transport_type, :event]
       ),
-
       distribution(
         "ex_utcp.connection.duration.milliseconds",
         event_name: [:ex_utcp, :connection],
@@ -165,12 +160,10 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         "ex_utcp.active_connections.count",
         description: "Number of active connections"
       ),
-
       last_value(
         "ex_utcp.registered_tools.count",
         description: "Number of registered tools"
       ),
-
       last_value(
         "ex_utcp.registered_providers.count",
         description: "Number of registered providers"
@@ -178,4 +171,3 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
     ]
   end
 end
-

@@ -9,7 +9,6 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
   use GenServer
   use ExUtcp.Transports.TcpUdp.ConnectionBehaviour
 
-
   defstruct [
     :socket,
     :provider,
@@ -65,7 +64,9 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
           port: provider.port,
           buffer: ""
         }
+
         {:ok, state}
+
       {:error, reason} ->
         {:stop, {:error, reason}}
     end
@@ -77,6 +78,7 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
       {:ok, result} ->
         new_state = %{state | last_used: System.monotonic_time(:millisecond)}
         {:reply, {:ok, result}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -88,6 +90,7 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
       {:ok, stream} ->
         new_state = %{state | last_used: System.monotonic_time(:millisecond)}
         {:reply, {:ok, stream}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -98,6 +101,7 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
     if state.socket do
       :gen_tcp.close(state.socket)
     end
+
     {:reply, :ok, state}
   end
 
@@ -162,12 +166,16 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
       {:ok, socket} ->
         # Try to send a test packet to verify connectivity
         case :gen_udp.send(socket, to_charlist(provider.host), provider.port, "test") do
-          :ok -> {:ok, socket}
+          :ok ->
+            {:ok, socket}
+
           {:error, reason} ->
             :gen_udp.close(socket)
             {:error, "UDP connection failed: #{inspect(reason)}"}
         end
-      {:error, reason} -> {:error, "UDP socket creation failed: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "UDP socket creation failed: #{inspect(reason)}"}
     end
   end
 
@@ -182,9 +190,13 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
               {:ok, result} -> {:ok, result}
               {:error, reason} -> {:error, "Failed to parse response: #{inspect(reason)}"}
             end
-          {:error, reason} -> {:error, "Failed to receive response: #{inspect(reason)}"}
+
+          {:error, reason} ->
+            {:error, "Failed to receive response: #{inspect(reason)}"}
         end
-      {:error, reason} -> {:error, "Failed to send message: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to send message: #{inspect(reason)}"}
     end
   end
 
@@ -196,7 +208,9 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
         # For streaming, we'll simulate by returning a stream of chunks
         stream = create_stream_from_response(state, timeout)
         {:ok, stream}
-      {:error, reason} -> {:error, "Failed to send message: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to send message: #{inspect(reason)}"}
     end
   end
 
@@ -260,11 +274,14 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
             case parse_response(data) do
               {:ok, result} ->
                 {[%{type: :stream, data: result}], {state, remaining_timeout}}
+
               {:error, _} ->
                 {[%{type: :error, error: "Parse error"}], {state, remaining_timeout}}
             end
+
           {:error, :timeout} ->
             {[%{type: :end}], {state, 0}}
+
           {:error, reason} ->
             {[%{type: :error, error: reason}], {state, 0}}
         end

@@ -14,9 +14,9 @@ defmodule ExUtcp.Transports.Grpc do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  require Logger
-
   alias ExUtcp.Transports.Grpc.{Pool, Connection, Gnmi}
+
+  require Logger
 
   defstruct [
     :logger,
@@ -62,7 +62,9 @@ defmodule ExUtcp.Transports.Grpc do
           {:ok, tools} -> {:ok, tools}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "gRPC transport can only be used with gRPC providers"}
+
+      _ ->
+        {:error, "gRPC transport can only be used with gRPC providers"}
     end
   end
 
@@ -71,7 +73,9 @@ defmodule ExUtcp.Transports.Grpc do
     case provider.type do
       :grpc ->
         GenServer.call(__MODULE__, {:deregister_tool_provider, provider})
-      _ -> {:error, "gRPC transport can only be used with gRPC providers"}
+
+      _ ->
+        {:error, "gRPC transport can only be used with gRPC providers"}
     end
   end
 
@@ -83,7 +87,9 @@ defmodule ExUtcp.Transports.Grpc do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "gRPC transport can only be used with gRPC providers"}
+
+      _ ->
+        {:error, "gRPC transport can only be used with gRPC providers"}
     end
   end
 
@@ -95,7 +101,9 @@ defmodule ExUtcp.Transports.Grpc do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "gRPC transport can only be used with gRPC providers"}
+
+      _ ->
+        {:error, "gRPC transport can only be used with gRPC providers"}
     end
   end
 
@@ -157,6 +165,7 @@ defmodule ExUtcp.Transports.Grpc do
     case Pool.start_link(state.pool_opts) do
       {:ok, _pool_pid} ->
         {:ok, state}
+
       {:error, reason} ->
         {:stop, reason}
     end
@@ -195,9 +204,13 @@ defmodule ExUtcp.Transports.Grpc do
 
   @impl GenServer
   def handle_call({:gnmi_get, provider, paths, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Gnmi.get(conn, paths, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Gnmi.get(conn, paths, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -205,9 +218,13 @@ defmodule ExUtcp.Transports.Grpc do
 
   @impl GenServer
   def handle_call({:gnmi_set, provider, updates, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Gnmi.set(conn, updates, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Gnmi.set(conn, updates, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -215,9 +232,13 @@ defmodule ExUtcp.Transports.Grpc do
 
   @impl GenServer
   def handle_call({:gnmi_subscribe, provider, paths, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Gnmi.subscribe(conn, paths, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Gnmi.subscribe(conn, paths, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -232,49 +253,68 @@ defmodule ExUtcp.Transports.Grpc do
   # Private functions
 
   defp discover_tools(provider, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          case Connection.get_manual(conn, state.connection_timeout) do
-            {:ok, tools} -> {:ok, tools}
-            {:error, reason} -> {:error, "Failed to discover tools: #{inspect(reason)}"}
-          end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            case Connection.get_manual(conn, state.connection_timeout) do
+              {:ok, tools} -> {:ok, tools}
+              {:error, reason} -> {:error, "Failed to discover tools: #{inspect(reason)}"}
+            end
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp execute_tool_call(tool_name, args, provider, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          case Connection.call_tool(conn, tool_name, args, state.connection_timeout) do
-            {:ok, result} -> {:ok, result}
-            {:error, reason} -> {:error, "Failed to call tool: #{inspect(reason)}"}
-          end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            case Connection.call_tool(conn, tool_name, args, state.connection_timeout) do
+              {:ok, result} -> {:ok, result}
+              {:error, reason} -> {:error, "Failed to call tool: #{inspect(reason)}"}
+            end
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp execute_tool_stream(tool_name, args, provider, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          case Connection.call_tool_stream(conn, tool_name, args, state.connection_timeout) do
-            {:ok, results} ->
-              # Enhance the stream with proper gRPC streaming metadata
-              enhanced_stream = create_grpc_stream(results, tool_name, provider)
-              {:ok, %{type: :stream, data: enhanced_stream, metadata: %{"transport" => "grpc", "tool" => tool_name, "protocol" => "grpc"}}}
-            {:error, reason} ->
-              {:error, "Failed to call tool stream: #{inspect(reason)}"}
-          end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            case Connection.call_tool_stream(conn, tool_name, args, state.connection_timeout) do
+              {:ok, results} ->
+                # Enhance the stream with proper gRPC streaming metadata
+                enhanced_stream = create_grpc_stream(results, tool_name, provider)
+
+                {:ok,
+                 %{
+                   type: :stream,
+                   data: enhanced_stream,
+                   metadata: %{"transport" => "grpc", "tool" => tool_name, "protocol" => "grpc"}
+                 }}
+
+              {:error, reason} ->
+                {:error, "Failed to call tool stream: #{inspect(reason)}"}
+            end
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp create_grpc_stream(results, tool_name, provider) do
@@ -297,24 +337,32 @@ defmodule ExUtcp.Transports.Grpc do
   end
 
   defp get_connection_and_execute(provider, fun, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          fun.(conn)
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            fun.(conn)
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp with_retry(fun, retry_config, attempt \\ 0) do
     case fun.() do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, _reason} when attempt < retry_config.max_retries ->
         delay = retry_config.retry_delay * :math.pow(retry_config.backoff_multiplier, attempt)
         :timer.sleep(round(delay))
         with_retry(fun, retry_config, attempt + 1)
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

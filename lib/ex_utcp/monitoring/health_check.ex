@@ -6,6 +6,7 @@ defmodule ExUtcp.Monitoring.HealthCheck do
   """
 
   use GenServer
+
   require Logger
 
   @enforce_keys [:check_interval, :checks, :status]
@@ -13,12 +14,12 @@ defmodule ExUtcp.Monitoring.HealthCheck do
 
   @type health_status :: :healthy | :degraded | :unhealthy
   @type check_result :: %{
-    name: String.t(),
-    status: health_status(),
-    message: String.t(),
-    duration_ms: integer(),
-    timestamp: integer()
-  }
+          name: String.t(),
+          status: health_status(),
+          message: String.t(),
+          duration_ms: integer(),
+          timestamp: integer()
+        }
 
   @doc """
   Starts the health check system.
@@ -64,7 +65,8 @@ defmodule ExUtcp.Monitoring.HealthCheck do
 
   @impl GenServer
   def init(opts) do
-    check_interval = Keyword.get(opts, :check_interval, 30_000) # 30 seconds
+    # 30 seconds
+    check_interval = Keyword.get(opts, :check_interval, 30_000)
 
     # Register default health checks
     default_checks = %{
@@ -97,10 +99,7 @@ defmodule ExUtcp.Monitoring.HealthCheck do
   def handle_call(:run_health_checks, _from, state) do
     {new_status, duration} = run_all_checks(state.checks)
 
-    new_state = %{state |
-      status: new_status,
-      last_check: System.system_time(:millisecond)
-    }
+    new_state = %{state | status: new_status, last_check: System.system_time(:millisecond)}
 
     # Emit telemetry event
     :telemetry.execute(
@@ -131,10 +130,7 @@ defmodule ExUtcp.Monitoring.HealthCheck do
   def handle_info(:run_health_checks, state) do
     {new_status, _duration} = run_all_checks(state.checks)
 
-    new_state = %{state |
-      status: new_status,
-      last_check: System.system_time(:millisecond)
-    }
+    new_state = %{state | status: new_status, last_check: System.system_time(:millisecond)}
 
     # Schedule next health check
     Process.send_after(self(), :run_health_checks, state.check_interval)
@@ -147,11 +143,12 @@ defmodule ExUtcp.Monitoring.HealthCheck do
   defp run_all_checks(checks) do
     start_time = System.monotonic_time(:millisecond)
 
-    status = Enum.map(checks, fn {name, check_function} ->
-      result = run_single_check(name, check_function)
-      {name, result}
-    end)
-    |> Enum.into(%{})
+    status =
+      Enum.map(checks, fn {name, check_function} ->
+        result = run_single_check(name, check_function)
+        {name, result}
+      end)
+      |> Map.new()
 
     end_time = System.monotonic_time(:millisecond)
     duration = end_time - start_time
@@ -214,45 +211,42 @@ defmodule ExUtcp.Monitoring.HealthCheck do
   # Default health check functions
 
   defp check_telemetry do
-    try do
-      # Test telemetry by emitting a test event
-      :telemetry.execute([:ex_utcp, :health_check, :telemetry], %{}, %{})
+    # Test telemetry by emitting a test event
+    :telemetry.execute([:ex_utcp, :health_check, :telemetry], %{}, %{})
 
+    %{
+      status: :healthy,
+      message: "Telemetry system operational"
+    }
+  rescue
+    error ->
       %{
-        status: :healthy,
-        message: "Telemetry system operational"
+        status: :unhealthy,
+        message: "Telemetry system error: #{inspect(error)}"
       }
-    rescue
-      error ->
-        %{
-          status: :unhealthy,
-          message: "Telemetry system error: #{inspect(error)}"
-        }
-    end
   end
 
   defp check_prometheus do
-    try do
-      # Check if PromEx is running
-      case Process.whereis(ExUtcp.Monitoring.PromEx) do
-        nil ->
-          %{
-            status: :degraded,
-            message: "PromEx not running"
-          }
-        _pid ->
-          %{
-            status: :healthy,
-            message: "Prometheus metrics operational"
-          }
-      end
-    rescue
-      error ->
+    # Check if PromEx is running
+    case Process.whereis(ExUtcp.Monitoring.PromEx) do
+      nil ->
         %{
-          status: :unhealthy,
-          message: "Prometheus system error: #{inspect(error)}"
+          status: :degraded,
+          message: "PromEx not running"
+        }
+
+      _pid ->
+        %{
+          status: :healthy,
+          message: "Prometheus metrics operational"
         }
     end
+  rescue
+    error ->
+      %{
+        status: :unhealthy,
+        message: "Prometheus system error: #{inspect(error)}"
+      }
   end
 
   defp check_transports do
@@ -266,25 +260,28 @@ defmodule ExUtcp.Monitoring.HealthCheck do
       {"tcp_udp", ExUtcp.Transports.TcpUdp}
     ]
 
-    transport_results = Enum.map(transports, fn {name, module} ->
-      status = if Code.ensure_loaded?(module) and
-                  function_exported?(module, :transport_name, 0) do
-        :healthy
-      else
-        :unhealthy
-      end
+    transport_results =
+      Enum.map(transports, fn {name, module} ->
+        status =
+          if Code.ensure_loaded?(module) and
+               function_exported?(module, :transport_name, 0) do
+            :healthy
+          else
+            :unhealthy
+          end
 
-      {name, status}
-    end)
+        {name, status}
+      end)
 
     healthy_count = Enum.count(transport_results, fn {_name, status} -> status == :healthy end)
     total_count = length(transport_results)
 
-    overall_status = cond do
-      healthy_count == total_count -> :healthy
-      healthy_count > total_count / 2 -> :degraded
-      true -> :unhealthy
-    end
+    overall_status =
+      cond do
+        healthy_count == total_count -> :healthy
+        healthy_count > total_count / 2 -> :degraded
+        true -> :unhealthy
+      end
 
     %{
       status: overall_status,
@@ -297,13 +294,15 @@ defmodule ExUtcp.Monitoring.HealthCheck do
     total_memory = memory_info[:total]
 
     # Check if memory usage is reasonable (less than 1GB for this example)
-    memory_limit = 1_000_000_000 # 1GB
+    # 1GB
+    memory_limit = 1_000_000_000
 
-    status = if total_memory < memory_limit do
-      :healthy
-    else
-      :degraded
-    end
+    status =
+      if total_memory < memory_limit do
+        :healthy
+      else
+        :degraded
+      end
 
     %{
       status: status,
@@ -315,13 +314,14 @@ defmodule ExUtcp.Monitoring.HealthCheck do
     process_count = :erlang.system_info(:process_count)
     process_limit = :erlang.system_info(:process_limit)
 
-    usage_percentage = (process_count / process_limit) * 100
+    usage_percentage = process_count / process_limit * 100
 
-    status = cond do
-      usage_percentage < 50 -> :healthy
-      usage_percentage < 80 -> :degraded
-      true -> :unhealthy
-    end
+    status =
+      cond do
+        usage_percentage < 50 -> :healthy
+        usage_percentage < 80 -> :degraded
+        true -> :unhealthy
+      end
 
     %{
       status: status,
@@ -329,4 +329,3 @@ defmodule ExUtcp.Monitoring.HealthCheck do
     }
   end
 end
-

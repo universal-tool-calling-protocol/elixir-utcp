@@ -1,18 +1,21 @@
 defmodule ExUtcp.Transports.Grpc.PoolTest do
   use ExUnit.Case, async: true
 
-  alias ExUtcp.Transports.Grpc.Pool
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.Grpc.Pool
 
   setup do
     # Stop any existing pool and start fresh
     case Process.whereis(Pool) do
-      nil -> :ok
+      nil ->
+        :ok
+
       pool_pid ->
         try do
           if Process.alive?(pool_pid) do
             GenServer.stop(pool_pid, :normal, 500)
-            Process.sleep(300) # Give it more time to stop
+            # Give it more time to stop
+            Process.sleep(300)
           end
         rescue
           _ -> :ok
@@ -59,14 +62,15 @@ defmodule ExUtcp.Transports.Grpc.PoolTest do
     test "respects max connections limit" do
       # This test would require mocking the connection creation
       # to avoid actually trying to connect to real servers
-      provider = Providers.new_grpc_provider([
-        name: "test",
-        host: "localhost",
-        port: 50051,
-        service_name: "UTCPService",
-        method_name: "GetManual",
-        use_ssl: false
-      ])
+      provider =
+        Providers.new_grpc_provider(
+          name: "test",
+          host: "localhost",
+          port: 50051,
+          service_name: "UTCPService",
+          method_name: "GetManual",
+          use_ssl: false
+        )
 
       # With the mock implementation, this will succeed
       assert {:ok, _pid} = Pool.get_connection(provider)

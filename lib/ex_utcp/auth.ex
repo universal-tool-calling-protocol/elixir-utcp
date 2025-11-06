@@ -54,7 +54,8 @@ defmodule ExUtcp.Auth do
     case auth.type do
       "api_key" -> apply_api_key_auth(auth, headers)
       "basic" -> apply_basic_auth(auth, headers)
-      "oauth2" -> headers  # OAuth2 requires token exchange, handled separately
+      # OAuth2 requires token exchange, handled separately
+      "oauth2" -> headers
       _ -> headers
     end
   end
@@ -69,10 +70,14 @@ defmodule ExUtcp.Auth do
     case auth.location do
       "header" ->
         Map.put(headers, auth.var_name, auth.api_key)
+
       "query" ->
-        headers  # Query params are handled separately
+        # Query params are handled separately
+        headers
+
       "cookie" ->
         Map.put(headers, "Cookie", "#{auth.var_name}=#{auth.api_key}")
+
       _ ->
         headers
     end
@@ -99,22 +104,26 @@ defmodule ExUtcp.Auth do
         else
           :ok
         end
+
       "basic" ->
         if is_nil(auth.username) or auth.username == "" or
-           is_nil(auth.password) or auth.password == "" do
+             is_nil(auth.password) or auth.password == "" do
           {:error, "Username and password are required for Basic authentication"}
         else
           :ok
         end
+
       "oauth2" ->
         if is_nil(auth.client_id) or auth.client_id == "" or
-           is_nil(auth.client_secret) or auth.client_secret == "" or
-           is_nil(auth.token_url) or auth.token_url == "" or
-           is_nil(auth.scope) or auth.scope == "" do
-          {:error, "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
+             is_nil(auth.client_secret) or auth.client_secret == "" or
+             is_nil(auth.token_url) or auth.token_url == "" or
+             is_nil(auth.scope) or auth.scope == "" do
+          {:error,
+           "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
         else
           :ok
         end
+
       _ ->
         {:error, "Unknown authentication type: #{auth.type}"}
     end

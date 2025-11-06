@@ -7,11 +7,14 @@ defmodule ExUtcp.Transports.GraphqlUnitTest do
     setup do
       # Clean up any existing GraphQL transport
       case Process.whereis(Graphql) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           try do
             GenServer.stop(pid)
-            Process.sleep(200) # Give it even more time to stop
+            # Give it even more time to stop
+            Process.sleep(200)
           rescue
             _ -> :ok
           end
@@ -19,6 +22,7 @@ defmodule ExUtcp.Transports.GraphqlUnitTest do
 
       :ok
     end
+
     test "creates new transport" do
       transport = Graphql.new()
 
@@ -55,7 +59,7 @@ defmodule ExUtcp.Transports.GraphqlUnitTest do
 
       # Test with invalid provider type - this should return an error without GenServer running
       assert {:error, "GraphQL transport can only be used with GraphQL providers"} =
-        Graphql.register_tool_provider(invalid_provider)
+               Graphql.register_tool_provider(invalid_provider)
     end
 
     test "deregister_tool_provider always succeeds" do

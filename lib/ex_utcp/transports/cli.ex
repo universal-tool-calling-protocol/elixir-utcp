@@ -66,20 +66,14 @@ defmodule ExUtcp.Transports.Cli do
   # Private functions
 
   defp discover_tools(provider) do
-    with {:ok, output} <- execute_discovery_command(provider),
-         {:ok, tools} <- parse_discovery_output(output, provider) do
-      {:ok, tools}
-    else
-      {:error, reason} -> {:error, reason}
+    with {:ok, output} <- execute_discovery_command(provider) do
+      parse_discovery_output(output, provider)
     end
   end
 
   defp execute_tool_call(tool_name, args, provider) do
-    with {:ok, output} <- execute_tool_command(tool_name, args, provider),
-         {:ok, result} <- parse_tool_output(output) do
-      {:ok, result}
-    else
-      {:error, reason} -> {:error, reason}
+    with {:ok, output} <- execute_tool_command(tool_name, args, provider) do
+      parse_tool_output(output)
     end
   end
 
@@ -114,10 +108,11 @@ defmodule ExUtcp.Transports.Cli do
     working_dir = provider.working_dir
 
     # Prepare JSON payload for stdin
-    input = case Jason.encode(args) do
-      {:ok, json} -> json
-      {:error, _} -> ""
-    end
+    input =
+      case Jason.encode(args) do
+        {:ok, json} -> json
+        {:error, _} -> ""
+      end
 
     cmd_opts = [
       env: env,
@@ -146,11 +141,17 @@ defmodule ExUtcp.Transports.Cli do
 
   defp format_argument(key, value) do
     case value do
-      true -> ["--#{key}"]
-      false -> []
+      true ->
+        ["--#{key}"]
+
+      false ->
+        []
+
       values when is_list(values) ->
         Enum.flat_map(values, fn v -> ["--#{key}", to_string(v)] end)
-      _ -> ["--#{key}", to_string(value)]
+
+      _ ->
+        ["--#{key}", to_string(value)]
     end
   end
 
@@ -158,11 +159,12 @@ defmodule ExUtcp.Transports.Cli do
     output = String.trim(output)
 
     # Remove surrounding quotes if present
-    output = if String.starts_with?(output, "'") and String.ends_with?(output, "'") do
-      String.slice(output, 1..-2//1)
-    else
-      output
-    end
+    output =
+      if String.starts_with?(output, "'") and String.ends_with?(output, "'") do
+        String.slice(output, 1..-2//1)
+      else
+        output
+      end
 
     cond do
       output == "" ->
@@ -180,13 +182,17 @@ defmodule ExUtcp.Transports.Cli do
     output = String.trim(output)
 
     cond do
-      output == "" -> {:ok, ""}
+      output == "" ->
+        {:ok, ""}
+
       String.starts_with?(output, "{") and String.ends_with?(output, "}") ->
         case Jason.decode(output) do
           {:ok, data} -> {:ok, data}
           {:error, _} -> {:ok, output}
         end
-      true -> {:ok, output}
+
+      true ->
+        {:ok, output}
     end
   end
 
@@ -197,13 +203,16 @@ defmodule ExUtcp.Transports.Cli do
           %{"tools" => tools} when is_list(tools) ->
             normalized_tools = Enum.map(tools, &normalize_tool(&1, provider))
             {:ok, normalized_tools}
+
           %{"name" => _} ->
             # Single tool
             normalized_tool = normalize_tool(data, provider)
             {:ok, [normalized_tool]}
+
           _ ->
             {:ok, []}
         end
+
       {:error, _reason} ->
         {:ok, []}
     end
@@ -226,7 +235,7 @@ defmodule ExUtcp.Transports.Cli do
   end
 
   defp normalize_tool(tool_data, provider) do
-    ExUtcp.Tools.new_tool([
+    ExUtcp.Tools.new_tool(
       name: Map.get(tool_data, "name", ""),
       description: Map.get(tool_data, "description", ""),
       inputs: parse_schema(Map.get(tool_data, "inputs", %{})),
@@ -234,11 +243,11 @@ defmodule ExUtcp.Transports.Cli do
       tags: Map.get(tool_data, "tags", []),
       average_response_size: Map.get(tool_data, "average_response_size"),
       provider: provider
-    ])
+    )
   end
 
   defp parse_schema(schema_data) do
-    ExUtcp.Tools.new_schema([
+    ExUtcp.Tools.new_schema(
       type: Map.get(schema_data, "type", "object"),
       properties: Map.get(schema_data, "properties", %{}),
       required: Map.get(schema_data, "required", []),
@@ -249,6 +258,6 @@ defmodule ExUtcp.Transports.Cli do
       minimum: Map.get(schema_data, "minimum"),
       maximum: Map.get(schema_data, "maximum"),
       format: Map.get(schema_data, "format", "")
-    ])
+    )
   end
 end

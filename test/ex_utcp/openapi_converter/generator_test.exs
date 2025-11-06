@@ -1,8 +1,8 @@
 defmodule ExUtcp.OpenApiConverter.GeneratorTest do
   use ExUnit.Case, async: true
 
-  alias ExUtcp.OpenApiConverter.{Generator, Types}
   alias ExUtcp.OpenApiConverter.Types, as: T
+  alias ExUtcp.OpenApiConverter.{Generator, Types}
 
   describe "generate_tools/2" do
     test "generates tools from parsed spec" do
@@ -115,7 +115,12 @@ defmodule ExUtcp.OpenApiConverter.GeneratorTest do
       opts = [
         prefix: "test",
         base_url: "https://custom.api.com",
-        auth: %{type: :api_key, api_key: "Bearer ${TOKEN}", location: :header, var_name: "Authorization"}
+        auth: %{
+          type: :api_key,
+          api_key: "Bearer ${TOKEN}",
+          location: :header,
+          var_name: "Authorization"
+        }
       ]
 
       {:ok, tools} = Generator.generate_tools(parsed_spec, opts)
@@ -158,7 +163,7 @@ defmodule ExUtcp.OpenApiConverter.GeneratorTest do
       }
 
       {:ok, tools} = Generator.generate_tools(parsed_spec, include_deprecated: false)
-      assert length(tools) == 0
+      assert Enum.empty?(tools)
 
       {:ok, tools} = Generator.generate_tools(parsed_spec, include_deprecated: true)
       assert length(tools) == 1
@@ -334,7 +339,7 @@ defmodule ExUtcp.OpenApiConverter.GeneratorTest do
       assert Map.has_key?(input_schema["properties"], "limit")
       assert Map.has_key?(input_schema["properties"], "offset")
       assert "offset" in input_schema["required"]
-      assert "limit" not in input_schema["required"]
+      refute "limit" in input_schema["required"]
     end
 
     test "handles error cases" do
@@ -350,7 +355,7 @@ defmodule ExUtcp.OpenApiConverter.GeneratorTest do
       }
 
       {:ok, tools} = Generator.generate_tools(parsed_spec)
-      assert length(tools) == 0
+      assert Enum.empty?(tools)
     end
   end
 end

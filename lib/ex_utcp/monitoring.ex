@@ -45,7 +45,8 @@ defmodule ExUtcp.Monitoring do
   @doc """
   Emits a telemetry event for tool call operations.
   """
-  @spec emit_tool_call_event(String.t(), String.t(), map(), integer(), :success | :error, any()) :: :ok
+  @spec emit_tool_call_event(String.t(), String.t(), map(), integer(), :success | :error, any()) ::
+          :ok
   def emit_tool_call_event(tool_name, provider_name, args, duration_ms, status, result_or_error) do
     metadata = %{
       tool_name: tool_name,
@@ -105,7 +106,8 @@ defmodule ExUtcp.Monitoring do
   @doc """
   Emits a telemetry event for connection operations.
   """
-  @spec emit_connection_event(String.t(), atom(), :connect | :disconnect | :error, integer()) :: :ok
+  @spec emit_connection_event(String.t(), atom(), :connect | :disconnect | :error, integer()) ::
+          :ok
   def emit_connection_event(provider_name, transport_type, event, duration_ms \\ 0) do
     metadata = %{
       provider_name: provider_name,
@@ -211,7 +213,9 @@ defmodule ExUtcp.Monitoring do
   end
 
   defp handle_tool_call_event([:ex_utcp, :tool_call], measurements, metadata, _config) do
-    Logger.info("Tool call: #{metadata.tool_name} (#{metadata.provider_name}) - #{metadata.status} in #{measurements.duration}ms")
+    Logger.info(
+      "Tool call: #{metadata.tool_name} (#{metadata.provider_name}) - #{metadata.status} in #{measurements.duration}ms"
+    )
 
     # Update counters and histograms
     :telemetry.execute(
@@ -235,7 +239,9 @@ defmodule ExUtcp.Monitoring do
   end
 
   defp handle_search_event([:ex_utcp, :search], measurements, metadata, _config) do
-    Logger.debug("Search: '#{String.slice(metadata.query_length > 0 && "query" || "empty", 0, 20)}' (#{metadata.algorithm}) - #{metadata.result_count} results in #{measurements.duration}ms")
+    Logger.debug(
+      "Search: '#{String.slice((metadata.query_length > 0 && "query") || "empty", 0, 20)}' (#{metadata.algorithm}) - #{metadata.result_count} results in #{measurements.duration}ms"
+    )
 
     # Update search metrics
     :telemetry.execute(
@@ -252,7 +258,9 @@ defmodule ExUtcp.Monitoring do
   end
 
   defp handle_provider_event([:ex_utcp, :provider], _measurements, metadata, _config) do
-    Logger.info("Provider #{metadata.action}: #{metadata.provider_name} (#{metadata.transport_type}) with #{metadata.tool_count} tools")
+    Logger.info(
+      "Provider #{metadata.action}: #{metadata.provider_name} (#{metadata.transport_type}) with #{metadata.tool_count} tools"
+    )
 
     # Update provider metrics
     :telemetry.execute(
@@ -266,7 +274,9 @@ defmodule ExUtcp.Monitoring do
   end
 
   defp handle_connection_event([:ex_utcp, :connection], measurements, metadata, _config) do
-    Logger.debug("Connection #{metadata.event}: #{metadata.provider_name} (#{metadata.transport_type}) in #{measurements.duration}ms")
+    Logger.debug(
+      "Connection #{metadata.event}: #{metadata.provider_name} (#{metadata.transport_type}) in #{measurements.duration}ms"
+    )
 
     # Update connection metrics
     :telemetry.execute(
@@ -364,24 +374,20 @@ defmodule ExUtcp.Monitoring do
     }
   end
 
+  # Check if telemetry is working
   defp check_telemetry_health do
-    # Check if telemetry is working
-    try do
-      :telemetry.execute([:ex_utcp, :health_check], %{}, %{component: :telemetry})
-      :healthy
-    rescue
-      _ -> :unhealthy
-    end
+    :telemetry.execute([:ex_utcp, :health_check], %{}, %{component: :telemetry})
+    :healthy
+  rescue
+    _ -> :unhealthy
   end
 
+  # Check if Prometheus metrics are working
   defp check_prometheus_health do
-    # Check if Prometheus metrics are working
-    try do
-      # This would check if PromEx is running and accessible
-      :healthy
-    rescue
-      _ -> :unhealthy
-    end
+    # This would check if PromEx is running and accessible
+    :healthy
+  rescue
+    _ -> :unhealthy
   end
 
   defp check_transports_health do
@@ -396,18 +402,20 @@ defmodule ExUtcp.Monitoring do
       ExUtcp.Transports.TcpUdp
     ]
 
-    transport_health = Enum.map(transports, fn transport ->
-      transport_name = transport.transport_name()
-      health_status = check_transport_health(transport)
-      {transport_name, health_status}
-    end)
-    |> Enum.into(%{})
+    transport_health =
+      Enum.map(transports, fn transport ->
+        transport_name = transport.transport_name()
+        health_status = check_transport_health(transport)
+        {transport_name, health_status}
+      end)
+      |> Map.new()
 
-    overall_health = if Enum.all?(Map.values(transport_health), &(&1 == :healthy)) do
-      :healthy
-    else
-      :degraded
-    end
+    overall_health =
+      if Enum.all?(Map.values(transport_health), &(&1 == :healthy)) do
+        :healthy
+      else
+        :degraded
+      end
 
     %{
       overall: overall_health,
@@ -416,16 +424,14 @@ defmodule ExUtcp.Monitoring do
   end
 
   defp check_transport_health(transport) do
-    try do
-      # Check if transport module is loaded and has required functions
-      if function_exported?(transport, :transport_name, 0) and
+    # Check if transport module is loaded and has required functions
+    if function_exported?(transport, :transport_name, 0) and
          function_exported?(transport, :supports_streaming?, 0) do
-        :healthy
-      else
-        :unhealthy
-      end
-    rescue
-      _ -> :unhealthy
+      :healthy
+    else
+      :unhealthy
     end
+  rescue
+    _ -> :unhealthy
   end
 end

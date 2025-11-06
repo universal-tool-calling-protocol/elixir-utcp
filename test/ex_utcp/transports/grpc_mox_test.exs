@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.GrpcMoxTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.Grpc
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -48,7 +49,7 @@ defmodule ExUtcp.Transports.GrpcMoxTest do
 
       # Test with invalid provider type
       assert {:error, "gRPC transport can only be used with gRPC providers"} =
-        Grpc.register_tool_provider(invalid_provider)
+               Grpc.register_tool_provider(invalid_provider)
     end
 
     test "registers tool provider successfully" do
@@ -77,23 +78,30 @@ defmodule ExUtcp.Transports.GrpcMoxTest do
       assert catch_exit(Grpc.register_tool_provider(provider))
     end
 
-  test "deregisters tool provider" do
-    provider = %{
-      name: "test",
-      type: :grpc,
-      url: "http://localhost:50051",
-      auth: nil,
-      headers: %{}
-    }
+    test "deregisters tool provider" do
+      provider = %{
+        name: "test",
+        type: :grpc,
+        url: "http://localhost:50051",
+        auth: nil,
+        headers: %{}
+      }
 
-    # Test with invalid provider type first
-    invalid_provider = %{name: "test", type: :http, url: "http://localhost:8080", auth: nil, headers: %{}}
-    assert {:error, "gRPC transport can only be used with gRPC providers"} =
-      Grpc.deregister_tool_provider(invalid_provider)
+      # Test with invalid provider type first
+      invalid_provider = %{
+        name: "test",
+        type: :http,
+        url: "http://localhost:8080",
+        auth: nil,
+        headers: %{}
+      }
 
-    # This will fail without GenServer running, but that's expected for unit tests
-    assert catch_exit(Grpc.deregister_tool_provider(provider))
-  end
+      assert {:error, "gRPC transport can only be used with gRPC providers"} =
+               Grpc.deregister_tool_provider(invalid_provider)
+
+      # This will fail without GenServer running, but that's expected for unit tests
+      assert catch_exit(Grpc.deregister_tool_provider(provider))
+    end
 
     test "executes unary call successfully" do
       provider = %{
@@ -121,18 +129,18 @@ defmodule ExUtcp.Transports.GrpcMoxTest do
       assert catch_exit(Grpc.call_tool("test_tool", %{}, provider))
     end
 
-  test "executes streaming call successfully" do
-    provider = %{
-      name: "test",
-      type: :grpc,
-      url: "http://localhost:50051",
-      auth: nil,
-      headers: %{}
-    }
+    test "executes streaming call successfully" do
+      provider = %{
+        name: "test",
+        type: :grpc,
+        url: "http://localhost:50051",
+        auth: nil,
+        headers: %{}
+      }
 
-    # This will fail without GenServer running, but that's expected for unit tests
-    assert catch_exit(Grpc.call_tool_stream("stream_tool", %{}, provider))
-  end
+      # This will fail without GenServer running, but that's expected for unit tests
+      assert catch_exit(Grpc.call_tool_stream("stream_tool", %{}, provider))
+    end
 
     test "handles gNMI operations successfully" do
       provider = %{

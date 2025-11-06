@@ -4,9 +4,10 @@ defmodule ExUtcp.Transports.Graphql.Pool do
   """
 
   use GenServer
-  require Logger
 
   alias ExUtcp.Transports.Graphql.Connection
+
+  require Logger
 
   defstruct [
     :connections,
@@ -60,7 +61,7 @@ defmodule ExUtcp.Transports.Graphql.Pool do
   Closes all connections.
   """
   @spec close_all_connections() :: :ok
-  def close_all_connections() do
+  def close_all_connections do
     GenServer.cast(__MODULE__, :close_all_connections)
   end
 
@@ -68,7 +69,7 @@ defmodule ExUtcp.Transports.Graphql.Pool do
   Gets pool statistics.
   """
   @spec stats() :: map()
-  def stats() do
+  def stats do
     GenServer.call(__MODULE__, :stats)
   end
 
@@ -81,7 +82,8 @@ defmodule ExUtcp.Transports.Graphql.Pool do
       max_connections: Keyword.get(opts, :max_connections, 10),
       connection_timeout: Keyword.get(opts, :connection_timeout, 30_000),
       cleanup_interval: Keyword.get(opts, :cleanup_interval, 60_000),
-      max_idle_time: Keyword.get(opts, :max_idle_time, 300_000) # 5 minutes
+      # 5 minutes
+      max_idle_time: Keyword.get(opts, :max_idle_time, 300_000)
     }
 
     # Start cleanup timer
@@ -102,9 +104,11 @@ defmodule ExUtcp.Transports.Graphql.Pool do
             new_connections = Map.put(state.connections, connection_key, pid)
             new_state = %{state | connections: new_connections}
             {:reply, {:ok, pid}, new_state}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       pid ->
         # Check if connection is still alive and healthy
         if Process.alive?(pid) and Connection.healthy?(pid) do
@@ -118,6 +122,7 @@ defmodule ExUtcp.Transports.Graphql.Pool do
             {:ok, new_pid} ->
               updated_connections = Map.put(new_connections, connection_key, new_pid)
               {:reply, {:ok, new_pid}, %{new_state | connections: updated_connections}}
+
             {:error, reason} ->
               {:reply, {:error, reason}, new_state}
           end
@@ -132,6 +137,7 @@ defmodule ExUtcp.Transports.Graphql.Pool do
       max_connections: state.max_connections,
       connection_keys: Map.keys(state.connections)
     }
+
     {:reply, stats, state}
   end
 
@@ -183,12 +189,14 @@ defmodule ExUtcp.Transports.Graphql.Pool do
           case get_connection_last_used(pid) do
             {:ok, last_used} ->
               idle_time = DateTime.diff(now, last_used, :millisecond)
+
               if idle_time > max_idle_time do
                 Connection.close(pid)
                 {acc, closed + 1}
               else
                 {Map.put(acc, key, pid), closed}
               end
+
             {:error, _} ->
               # Connection is not responding, close it
               Connection.close(pid)
@@ -229,23 +237,24 @@ defmodule ExUtcp.Transports.Graphql.Pool do
 
   defp build_connection_key(provider) do
     url = Map.get(provider, :url, "http://localhost:4000")
-    auth_key = case Map.get(provider, :auth) do
-      nil -> "no_auth"
-      auth -> "#{auth.type}_#{auth.api_key || auth.username || auth.access_token}"
-    end
+
+    auth_key =
+      case Map.get(provider, :auth) do
+        nil -> "no_auth"
+        auth -> "#{auth.type}_#{auth.api_key || auth.username || auth.access_token}"
+      end
 
     "#{url}:#{auth_key}"
   end
 
   defp get_connection_last_used(pid) do
-    try do
-      GenServer.call(pid, :last_used, 1000)
-    rescue
-      _ -> {:error, :timeout}
-    end
+    GenServer.call(pid, :last_used, 1000)
+  rescue
+    _ -> {:error, :timeout}
   end
 
-  defp schedule_cleanup() do
-    Process.send_after(self(), :cleanup, 60_000) # 1 minute
+  defp schedule_cleanup do
+    # 1 minute
+    Process.send_after(self(), :cleanup, 60_000)
   end
 end

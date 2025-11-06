@@ -1,14 +1,17 @@
 defmodule ExUtcp.Transports.McpTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
 
   alias ExUtcp.Transports.Mcp
+
+  @moduletag :integration
 
   describe "MCP Transport" do
     setup do
       # Clean up any existing MCP transport
       case Process.whereis(Mcp) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           try do
             GenServer.stop(pid)
@@ -67,7 +70,7 @@ defmodule ExUtcp.Transports.McpTest do
 
       # Test with invalid provider type
       assert {:error, "Invalid provider type for MCP transport"} =
-        Mcp.register_tool_provider(invalid_provider)
+               Mcp.register_tool_provider(invalid_provider)
     end
 
     test "deregister_tool_provider always succeeds" do

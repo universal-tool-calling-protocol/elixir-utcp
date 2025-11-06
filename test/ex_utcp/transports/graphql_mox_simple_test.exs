@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.GraphqlMoxSimpleTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.Graphql
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -38,7 +39,7 @@ defmodule ExUtcp.Transports.GraphqlMoxSimpleTest do
 
       # Test with invalid provider type
       assert {:error, "GraphQL transport can only be used with GraphQL providers"} =
-        Graphql.register_tool_provider(invalid_provider)
+               Graphql.register_tool_provider(invalid_provider)
     end
 
     @tag :genserver_lifecycle
@@ -71,20 +72,23 @@ defmodule ExUtcp.Transports.GraphqlMoxSimpleTest do
     end
 
     test "handles retry configuration" do
-      transport = Graphql.new(
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      )
+      transport =
+        Graphql.new(
+          max_retries: 5,
+          retry_delay: 2000,
+          backoff_multiplier: 2.0
+        )
+
       assert %Graphql{} = transport
       # The transport uses individual retry parameters
       assert transport.max_retries == 5
       assert transport.retry_delay == 2000
+
       assert transport.retry_config == %{
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      }
+               max_retries: 5,
+               retry_delay: 2000,
+               backoff_multiplier: 2.0
+             }
     end
 
     test "handles pool configuration" do

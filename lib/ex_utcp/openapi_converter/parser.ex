@@ -38,17 +38,19 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   """
   @spec validate(map()) :: {:ok, T.ValidationResult.t()} | {:error, term()}
   def validate(spec) do
-    with {:ok, parsed_spec} <- parse(spec) do
-      validation_result = %T.ValidationResult{
-        valid: true,
-        errors: [],
-        warnings: [],
-        version: parsed_spec.version,
-        operations_count: count_operations(parsed_spec),
-        security_schemes_count: count_security_schemes(parsed_spec)
-      }
-      {:ok, validation_result}
-    else
+    case parse(spec) do
+      {:ok, parsed_spec} ->
+        validation_result = %T.ValidationResult{
+          valid: true,
+          errors: [],
+          warnings: [],
+          version: parsed_spec.version,
+          operations_count: count_operations(parsed_spec),
+          security_schemes_count: count_security_schemes(parsed_spec)
+        }
+
+        {:ok, validation_result}
+
       {:error, reason} ->
         validation_result = %T.ValidationResult{
           valid: false,
@@ -58,6 +60,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
           operations_count: 0,
           security_schemes_count: 0
         }
+
         {:ok, validation_result}
     end
   end
@@ -73,40 +76,38 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_swagger_2_0(spec) do
-    try do
-      parsed_spec = %T.ParsedSpec{
-        version: "2.0",
-        info: parse_swagger_info(spec["info"] || %{}),
-        servers: parse_swagger_servers(spec),
-        paths: parse_swagger_paths(spec["paths"] || %{}),
-        components: parse_swagger_components(spec),
-        security: parse_swagger_security(spec["security"] || []),
-        tags: parse_swagger_tags(spec["tags"] || []),
-        external_docs: parse_external_docs(spec["externalDocs"])
-      }
-      {:ok, parsed_spec}
-    rescue
-      error ->
-        {:error, "Failed to parse Swagger 2.0 spec: #{Exception.message(error)}"}
-    end
+    parsed_spec = %T.ParsedSpec{
+      version: "2.0",
+      info: parse_swagger_info(spec["info"] || %{}),
+      servers: parse_swagger_servers(spec),
+      paths: parse_swagger_paths(spec["paths"] || %{}),
+      components: parse_swagger_components(spec),
+      security: parse_swagger_security(spec["security"] || []),
+      tags: parse_swagger_tags(spec["tags"] || []),
+      external_docs: parse_external_docs(spec["externalDocs"])
+    }
+
+    {:ok, parsed_spec}
+  rescue
+    error ->
+      {:error, "Failed to parse Swagger 2.0 spec: #{Exception.message(error)}"}
   end
 
   defp parse_openapi_3_0(spec) do
-    try do
-      parsed_spec = %T.ParsedSpec{
-        version: "3.0",
-        info: parse_openapi_info(spec["info"] || %{}),
-        servers: parse_openapi_servers(spec["servers"] || []),
-        paths: parse_openapi_paths(spec["paths"] || %{}),
-        components: parse_openapi_components(spec["components"] || %{}),
-        security: parse_openapi_security(spec["security"] || []),
-        tags: parse_openapi_tags(spec["tags"] || []),
-        external_docs: parse_external_docs(spec["externalDocs"])
-      }
-      {:ok, parsed_spec}
-    rescue
-      error -> {:error, "Failed to parse OpenAPI 3.0 spec: #{Exception.message(error)}"}
-    end
+    parsed_spec = %T.ParsedSpec{
+      version: "3.0",
+      info: parse_openapi_info(spec["info"] || %{}),
+      servers: parse_openapi_servers(spec["servers"] || []),
+      paths: parse_openapi_paths(spec["paths"] || %{}),
+      components: parse_openapi_components(spec["components"] || %{}),
+      security: parse_openapi_security(spec["security"] || []),
+      tags: parse_openapi_tags(spec["tags"] || []),
+      external_docs: parse_external_docs(spec["externalDocs"])
+    }
+
+    {:ok, parsed_spec}
+  rescue
+    error -> {:error, "Failed to parse OpenAPI 3.0 spec: #{Exception.message(error)}"}
   end
 
   # Swagger 2.0 parsing functions
@@ -145,47 +146,54 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   defp parse_swagger_operations(path, path_item) do
     operations = []
 
-    operations = if path_item["get"] do
-      [parse_swagger_operation("GET", path, path_item["get"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["get"] do
+        [parse_swagger_operation("GET", path, path_item["get"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["post"] do
-      [parse_swagger_operation("POST", path, path_item["post"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["post"] do
+        [parse_swagger_operation("POST", path, path_item["post"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["put"] do
-      [parse_swagger_operation("PUT", path, path_item["put"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["put"] do
+        [parse_swagger_operation("PUT", path, path_item["put"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["delete"] do
-      [parse_swagger_operation("DELETE", path, path_item["delete"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["delete"] do
+        [parse_swagger_operation("DELETE", path, path_item["delete"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["patch"] do
-      [parse_swagger_operation("PATCH", path, path_item["patch"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["patch"] do
+        [parse_swagger_operation("PATCH", path, path_item["patch"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["head"] do
-      [parse_swagger_operation("HEAD", path, path_item["head"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["head"] do
+        [parse_swagger_operation("HEAD", path, path_item["head"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["options"] do
-      [parse_swagger_operation("OPTIONS", path, path_item["options"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["options"] do
+        [parse_swagger_operation("OPTIONS", path, path_item["options"]) | operations]
+      else
+        operations
+      end
 
     Enum.reverse(operations)
   end
@@ -199,7 +207,8 @@ defmodule ExUtcp.OpenApiConverter.Parser do
       description: operation["description"],
       tags: operation["tags"] || [],
       parameters: parse_swagger_parameters(operation["parameters"] || []),
-      request_body: nil, # Swagger 2.0 doesn't have request body
+      # Swagger 2.0 doesn't have request body
+      request_body: nil,
       responses: parse_swagger_responses(operation["responses"] || %{}),
       security: parse_swagger_operation_security(operation["security"]),
       deprecated: operation["deprecated"] || false
@@ -226,14 +235,15 @@ defmodule ExUtcp.OpenApiConverter.Parser do
       %T.ParsedResponse{
         status_code: status_code,
         description: response["description"],
-        content_types: ["application/json"], # Swagger 2.0 default
+        # Swagger 2.0 default
+        content_types: ["application/json"],
         schema: parse_swagger_schema(response["schema"])
       }
     end)
   end
 
   defp parse_swagger_schema(schema) when is_map(schema) do
-    items = if schema["items"], do: parse_swagger_schema(schema["items"]), else: nil
+    items = if schema["items"], do: parse_swagger_schema(schema["items"])
 
     %T.OpenApiSchema{
       type: schema["type"],
@@ -254,7 +264,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
     Enum.map(properties, fn {name, schema} ->
       {name, parse_swagger_schema(schema)}
     end)
-    |> Enum.into(%{})
+    |> Map.new()
   end
 
   defp parse_swagger_components(spec) do
@@ -265,17 +275,18 @@ defmodule ExUtcp.OpenApiConverter.Parser do
 
   defp parse_swagger_security_definitions(security_definitions) do
     Enum.map(security_definitions, fn {name, scheme} ->
-      {name, %T.ParsedSecurityScheme{
-        name: scheme["name"],
-        type: scheme["type"],
-        description: scheme["description"],
-        in: scheme["in"],
-        scheme: scheme["scheme"],
-        bearer_format: scheme["bearerFormat"],
-        flows: nil
-      }}
+      {name,
+       %T.ParsedSecurityScheme{
+         name: scheme["name"],
+         type: scheme["type"],
+         description: scheme["description"],
+         in: scheme["in"],
+         scheme: scheme["scheme"],
+         bearer_format: scheme["bearerFormat"],
+         flows: nil
+       }}
     end)
-    |> Enum.into(%{})
+    |> Map.new()
   end
 
   defp parse_swagger_security(security) do
@@ -283,7 +294,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
       Enum.map(security_requirement, fn {name, scopes} ->
         {name, scopes || []}
       end)
-      |> Enum.into(%{})
+      |> Map.new()
     end)
   end
 
@@ -332,53 +343,61 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   defp parse_openapi_operations(path, path_item) do
     operations = []
 
-    operations = if path_item["get"] do
-      [parse_openapi_operation("GET", path, path_item["get"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["get"] do
+        [parse_openapi_operation("GET", path, path_item["get"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["post"] do
-      [parse_openapi_operation("POST", path, path_item["post"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["post"] do
+        [parse_openapi_operation("POST", path, path_item["post"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["put"] do
-      [parse_openapi_operation("PUT", path, path_item["put"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["put"] do
+        [parse_openapi_operation("PUT", path, path_item["put"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["delete"] do
-      [parse_openapi_operation("DELETE", path, path_item["delete"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["delete"] do
+        [parse_openapi_operation("DELETE", path, path_item["delete"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["patch"] do
-      [parse_openapi_operation("PATCH", path, path_item["patch"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["patch"] do
+        [parse_openapi_operation("PATCH", path, path_item["patch"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["head"] do
-      [parse_openapi_operation("HEAD", path, path_item["head"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["head"] do
+        [parse_openapi_operation("HEAD", path, path_item["head"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["options"] do
-      [parse_openapi_operation("OPTIONS", path, path_item["options"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["options"] do
+        [parse_openapi_operation("OPTIONS", path, path_item["options"]) | operations]
+      else
+        operations
+      end
 
-    operations = if path_item["trace"] do
-      [parse_openapi_operation("TRACE", path, path_item["trace"]) | operations]
-    else
-      operations
-    end
+    operations =
+      if path_item["trace"] do
+        [parse_openapi_operation("TRACE", path, path_item["trace"]) | operations]
+      else
+        operations
+      end
 
     Enum.reverse(operations)
   end
@@ -415,6 +434,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_openapi_request_body(nil), do: nil
+
   defp parse_openapi_request_body(request_body) do
     %T.ParsedRequestBody{
       description: request_body["description"],
@@ -443,6 +463,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_openapi_schema(nil), do: nil
+
   defp parse_openapi_schema(schema) when is_map(schema) do
     %T.OpenApiSchema{
       type: schema["type"],
@@ -461,7 +482,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
     Enum.map(properties, fn {name, schema} ->
       {name, parse_openapi_schema(schema)}
     end)
-    |> Enum.into(%{})
+    |> Map.new()
   end
 
   defp parse_openapi_components(components) do
@@ -482,10 +503,11 @@ defmodule ExUtcp.OpenApiConverter.Parser do
         flows: parse_oauth_flows(scheme["flows"])
       }
     end)
-    |> Enum.into(%{})
+    |> Map.new()
   end
 
   defp parse_oauth_flows(nil), do: nil
+
   defp parse_oauth_flows(flows) do
     %T.OpenApiOAuthFlows{
       implicit: parse_oauth_flow(flows["implicit"]),
@@ -496,6 +518,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_oauth_flow(nil), do: nil
+
   defp parse_oauth_flow(flow) do
     %T.OpenApiOAuthFlow{
       authorization_url: flow["authorizationUrl"],
@@ -510,7 +533,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
       Enum.map(security_requirement, fn {name, scopes} ->
         {name, scopes || []}
       end)
-      |> Enum.into(%{})
+      |> Map.new()
     end)
   end
 
@@ -530,6 +553,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   # Common parsing functions
 
   defp parse_contact(nil), do: nil
+
   defp parse_contact(contact) do
     %T.Contact{
       name: contact["name"],
@@ -539,6 +563,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_license(nil), do: nil
+
   defp parse_license(license) do
     %T.License{
       name: license["name"],
@@ -547,6 +572,7 @@ defmodule ExUtcp.OpenApiConverter.Parser do
   end
 
   defp parse_external_docs(nil), do: nil
+
   defp parse_external_docs(external_docs) do
     %T.ExternalDocs{
       description: external_docs["description"],
@@ -558,8 +584,10 @@ defmodule ExUtcp.OpenApiConverter.Parser do
     path
     |> String.replace(~r/[{}]/, "")
     |> String.replace(~r/[^a-zA-Z0-9]/, "_")
-    |> String.replace(~r/_{2,}/, "_")  # Replace multiple underscores with single underscore
-    |> String.replace(~r/^_|_$/, "")   # Remove leading/trailing underscores
+    # Replace multiple underscores with single underscore
+    |> String.replace(~r/_{2,}/, "_")
+    # Remove leading/trailing underscores
+    |> String.replace(~r/^_|_$/, "")
     |> String.downcase()
     |> then(&"#{String.downcase(method)}_#{&1}")
   end

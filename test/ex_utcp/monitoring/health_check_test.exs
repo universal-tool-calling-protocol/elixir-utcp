@@ -1,8 +1,9 @@
 defmodule ExUtcp.Monitoring.HealthCheckTest do
   use ExUnit.Case, async: false
-  @moduletag :unit
 
   alias ExUtcp.Monitoring.HealthCheck
+
+  @moduletag :unit
 
   describe "Health Check System" do
     test "starts and provides health status" do
@@ -83,4 +84,3 @@ defmodule ExUtcp.Monitoring.HealthCheckTest do
     end
   end
 end
-

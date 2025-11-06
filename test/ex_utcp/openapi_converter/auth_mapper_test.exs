@@ -1,8 +1,8 @@
 defmodule ExUtcp.OpenApiConverter.AuthMapperTest do
   use ExUnit.Case, async: true
 
-  alias ExUtcp.OpenApiConverter.{AuthMapper, Types}
   alias ExUtcp.OpenApiConverter.Types, as: T
+  alias ExUtcp.OpenApiConverter.{AuthMapper, Types}
 
   describe "map_security_scheme/1" do
     test "maps API key security scheme" do
@@ -225,6 +225,7 @@ defmodule ExUtcp.OpenApiConverter.AuthMapperTest do
   describe "map_security_requirement/2" do
     test "maps security requirement to auth" do
       security_requirement = %{"apiKey" => []}
+
       security_schemes = %{
         "apiKey" => %T.ParsedSecurityScheme{
           name: "apiKey",

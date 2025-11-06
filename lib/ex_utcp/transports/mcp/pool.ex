@@ -4,9 +4,10 @@ defmodule ExUtcp.Transports.Mcp.Pool do
   """
 
   use GenServer
-  require Logger
 
   alias ExUtcp.Transports.Mcp.Connection
+
+  require Logger
 
   defstruct [
     :connections,
@@ -83,9 +84,11 @@ defmodule ExUtcp.Transports.Mcp.Pool do
             new_connections = Map.put(state.connections, provider_key, pid)
             new_state = %{state | connections: new_connections}
             {:reply, {:ok, pid}, new_state}
+
           {:error, reason} ->
             {:reply, {:error, reason}, state}
         end
+
       pid ->
         # Check if connection is still alive
         if Process.alive?(pid) do
@@ -97,6 +100,7 @@ defmodule ExUtcp.Transports.Mcp.Pool do
               new_connections = Map.put(state.connections, provider_key, new_pid)
               new_state = %{state | connections: new_connections}
               {:reply, {:ok, new_pid}, new_state}
+
             {:error, reason} ->
               {:reply, {:error, reason}, state}
           end
@@ -107,9 +111,11 @@ defmodule ExUtcp.Transports.Mcp.Pool do
   @impl GenServer
   def handle_call({:close_connection, pid}, _from, state) do
     # Find and remove the connection
-    new_connections = Enum.reject(state.connections, fn {_key, connection_pid} ->
-      connection_pid == pid
-    end) |> Enum.into(%{})
+    new_connections =
+      Enum.reject(state.connections, fn {_key, connection_pid} ->
+        connection_pid == pid
+      end)
+      |> Map.new()
 
     # Close the connection if it's still alive
     if Process.alive?(pid) do
@@ -140,15 +146,18 @@ defmodule ExUtcp.Transports.Mcp.Pool do
       max_connections: state.max_connections,
       connections: Map.keys(state.connections)
     }
+
     {:reply, stats, state}
   end
 
   @impl GenServer
   def handle_info(:cleanup, state) do
     # Clean up dead connections
-    alive_connections = Enum.filter(state.connections, fn {_key, pid} ->
-      Process.alive?(pid)
-    end) |> Enum.into(%{})
+    alive_connections =
+      Enum.filter(state.connections, fn {_key, pid} ->
+        Process.alive?(pid)
+      end)
+      |> Map.new()
 
     new_state = %{state | connections: alive_connections}
 
@@ -162,9 +171,11 @@ defmodule ExUtcp.Transports.Mcp.Pool do
   @impl GenServer
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
     # Remove dead connection from pool
-    new_connections = Enum.reject(state.connections, fn {_key, connection_pid} ->
-      connection_pid == pid
-    end) |> Enum.into(%{})
+    new_connections =
+      Enum.reject(state.connections, fn {_key, connection_pid} ->
+        connection_pid == pid
+      end)
+      |> Map.new()
 
     new_state = %{state | connections: new_connections}
     {:noreply, new_state}
@@ -181,6 +192,7 @@ defmodule ExUtcp.Transports.Mcp.Pool do
           # Monitor the connection
           Process.monitor(pid)
           {:ok, pid}
+
         {:error, reason} ->
           {:error, "Failed to create connection: #{inspect(reason)}"}
       end

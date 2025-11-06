@@ -19,7 +19,8 @@ defmodule ExUtcp.Transports.TcpUdp do
   ]
 
   def new(opts \\ []) do
-    retry_config = Keyword.get(opts, :retry_config, %{max_retries: 3, retry_delay: 1000, backoff_multiplier: 2})
+    retry_config =
+      Keyword.get(opts, :retry_config, %{max_retries: 3, retry_delay: 1000, backoff_multiplier: 2})
 
     %__MODULE__{
       connection_pool: nil,
@@ -89,9 +90,14 @@ defmodule ExUtcp.Transports.TcpUdp do
   @impl GenServer
   def handle_call({:register_tool_provider, provider}, _from, state) do
     case provider.type do
-      :tcp -> register_tcp_provider(provider, state)
-      :udp -> register_udp_provider(provider, state)
-      _ -> {:reply, {:error, "TCP/UDP transport can only be used with TCP or UDP providers"}, state}
+      :tcp ->
+        register_tcp_provider(provider, state)
+
+      :udp ->
+        register_udp_provider(provider, state)
+
+      _ ->
+        {:reply, {:error, "TCP/UDP transport can only be used with TCP or UDP providers"}, state}
     end
   end
 
@@ -119,6 +125,7 @@ defmodule ExUtcp.Transports.TcpUdp do
     if state.connection_pool do
       Pool.close_all_connections(state.connection_pool)
     end
+
     {:reply, :ok, state}
   end
 
@@ -138,6 +145,7 @@ defmodule ExUtcp.Transports.TcpUdp do
         new_providers = Map.put(state.providers, provider.name, provider)
         new_state = %{state | providers: new_providers}
         {:reply, {:ok, []}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -149,6 +157,7 @@ defmodule ExUtcp.Transports.TcpUdp do
         new_providers = Map.put(state.providers, provider.name, provider)
         new_state = %{state | providers: new_providers}
         {:reply, {:ok, []}, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -173,42 +182,62 @@ defmodule ExUtcp.Transports.TcpUdp do
   end
 
   defp execute_tool_call(tool_name, args, provider, state) do
-    with_retry(fn ->
-      try do
-        case get_or_create_connection(provider, state) do
-          {:ok, conn} ->
-            case Connection.call_tool(conn, tool_name, args, state.connection_timeout) do
-              {:ok, result} -> {:ok, result}
-              {:error, reason} -> {:error, "Failed to call tool: #{inspect(reason)}"}
-            end
-          {:error, reason} ->
-            {:error, "Failed to get connection: #{inspect(reason)}"}
+    with_retry(
+      fn ->
+        try do
+          case get_or_create_connection(provider, state) do
+            {:ok, conn} ->
+              case Connection.call_tool(conn, tool_name, args, state.connection_timeout) do
+                {:ok, result} -> {:ok, result}
+                {:error, reason} -> {:error, "Failed to call tool: #{inspect(reason)}"}
+              end
+
+            {:error, reason} ->
+              {:error, "Failed to get connection: #{inspect(reason)}"}
+          end
+        catch
+          :exit, reason -> {:error, "Connection failed: #{inspect(reason)}"}
         end
-      catch
-        :exit, reason -> {:error, "Connection failed: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+      end,
+      state.retry_config
+    )
   end
 
   defp execute_tool_stream(tool_name, args, provider, state) do
-    with_retry(fn ->
-      try do
-        case get_or_create_connection(provider, state) do
-          {:ok, conn} ->
-            case Connection.call_tool_stream(conn, tool_name, args, state.connection_timeout) do
-              {:ok, stream} ->
-                # Enhance the stream with proper TCP/UDP streaming metadata
-                enhanced_stream = create_tcp_udp_stream(stream, tool_name, provider)
-                {:ok, %{type: :stream, data: enhanced_stream, metadata: %{"transport" => "tcp_udp", "tool" => tool_name, "protocol" => provider.protocol}}}
-              {:error, reason} -> {:error, "Failed to call tool stream: #{inspect(reason)}"}
-            end
-          {:error, reason} ->
-            {:error, "Failed to get connection: #{inspect(reason)}"}
+    with_retry(
+      fn ->
+        try do
+          case get_or_create_connection(provider, state) do
+            {:ok, conn} ->
+              case Connection.call_tool_stream(conn, tool_name, args, state.connection_timeout) do
+                {:ok, stream} ->
+                  # Enhance the stream with proper TCP/UDP streaming metadata
+                  enhanced_stream = create_tcp_udp_stream(stream, tool_name, provider)
+
+                  {:ok,
+                   %{
+                     type: :stream,
+                     data: enhanced_stream,
+                     metadata: %{
+                       "transport" => "tcp_udp",
+                       "tool" => tool_name,
+                       "protocol" => provider.protocol
+                     }
+                   }}
+
+                {:error, reason} ->
+                  {:error, "Failed to call tool stream: #{inspect(reason)}"}
+              end
+
+            {:error, reason} ->
+              {:error, "Failed to get connection: #{inspect(reason)}"}
+          end
+        catch
+          :exit, reason -> {:error, "Connection failed: #{inspect(reason)}"}
         end
-      catch
-        :exit, reason -> {:error, "Connection failed: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+      end,
+      state.retry_config
+    )
   end
 
   defp create_tcp_udp_stream(stream, tool_name, provider) do
@@ -228,10 +257,13 @@ defmodule ExUtcp.Transports.TcpUdp do
             timestamp: System.monotonic_time(:millisecond),
             sequence: index
           }
+
         %{type: :error, error: error} ->
           %{type: :error, error: error, code: 500, metadata: %{"sequence" => index}}
+
         %{type: :end} ->
           %{type: :end, metadata: %{"sequence" => index}}
+
         other ->
           %{
             data: other,
@@ -257,18 +289,23 @@ defmodule ExUtcp.Transports.TcpUdp do
     with_retry_impl(fun, 0, max_retries, retry_delay, backoff_multiplier)
   end
 
-  defp with_retry_impl(_fun, current_retry, max_retries, _retry_delay, _backoff_multiplier) when current_retry >= max_retries do
+  defp with_retry_impl(_fun, current_retry, max_retries, _retry_delay, _backoff_multiplier)
+       when current_retry >= max_retries do
     {:error, "Max retries exceeded"}
   end
 
   defp with_retry_impl(fun, current_retry, max_retries, retry_delay, backoff_multiplier) do
     case fun.() do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, _reason} when current_retry < max_retries ->
-        delay = retry_delay * :math.pow(backoff_multiplier, current_retry) |> round()
+        delay = (retry_delay * :math.pow(backoff_multiplier, current_retry)) |> round()
         Process.sleep(delay)
         with_retry_impl(fun, current_retry + 1, max_retries, retry_delay, backoff_multiplier)
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

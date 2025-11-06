@@ -1,9 +1,10 @@
 defmodule ExUtcp.Transports.WebRTCTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
 
-  alias ExUtcp.Transports.WebRTC
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.WebRTC
+
+  @moduletag :integration
 
   describe "WebRTC Transport" do
     test "creates new transport" do
@@ -16,11 +17,12 @@ defmodule ExUtcp.Transports.WebRTCTest do
     end
 
     test "creates transport with custom options" do
-      transport = WebRTC.new(
-        signaling_server: "wss://custom.signaling.com",
-        connection_timeout: 60_000,
-        ice_servers: [%{urls: ["stun:stun.custom.com:19302"]}]
-      )
+      transport =
+        WebRTC.new(
+          signaling_server: "wss://custom.signaling.com",
+          connection_timeout: 60_000,
+          ice_servers: [%{urls: ["stun:stun.custom.com:19302"]}]
+        )
 
       assert transport.signaling_server == "wss://custom.signaling.com"
       assert transport.connection_timeout == 60_000
@@ -36,11 +38,12 @@ defmodule ExUtcp.Transports.WebRTCTest do
     end
 
     test "validates provider type" do
-      valid_provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "peer_123",
-        signaling_server: "wss://signaling.example.com"
-      )
+      valid_provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "peer_123",
+          signaling_server: "wss://signaling.example.com"
+        )
 
       invalid_provider = %{
         name: "test_http",
@@ -58,10 +61,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
 
   describe "WebRTC Provider Creation" do
     test "creates WebRTC provider with required fields" do
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "peer_123"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "peer_123"
+        )
 
       assert provider.name == "test_webrtc"
       assert provider.type == :webrtc
@@ -72,10 +76,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
     end
 
     test "creates WebRTC provider with custom signaling server" do
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        signaling_server: "wss://my-signaling.com"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          signaling_server: "wss://my-signaling.com"
+        )
 
       assert provider.signaling_server == "wss://my-signaling.com"
     end
@@ -90,10 +95,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
         }
       ]
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        ice_servers: custom_ice_servers
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          ice_servers: custom_ice_servers
+        )
 
       assert provider.ice_servers == custom_ice_servers
       assert length(provider.ice_servers) == 2
@@ -105,10 +111,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
         %{name: "tool2", description: "Test tool 2"}
       ]
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        tools: tools
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          tools: tools
+        )
 
       assert provider.tools == tools
       assert length(provider.tools) == 2
@@ -121,11 +128,12 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires a real signaling server and peer
       # Skipped for unit tests, would be run in integration environment
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "remote_peer",
-        signaling_server: "wss://signaling.example.com"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "remote_peer",
+          signaling_server: "wss://signaling.example.com"
+        )
 
       # Would test actual connection establishment
       assert provider.type == :webrtc
@@ -136,10 +144,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires actual peer connection
       # Skipped for unit tests
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "remote_peer"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "remote_peer"
+        )
 
       assert provider.type == :webrtc
     end
@@ -149,10 +158,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires actual peer connection
       # Skipped for unit tests
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "remote_peer"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "remote_peer"
+        )
 
       assert provider.type == :webrtc
     end
@@ -164,11 +174,12 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires actual peer connection and data channel
       # Skipped for unit tests
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "remote_peer",
-        tools: [%{name: "test_tool", description: "Test tool"}]
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "remote_peer",
+          tools: [%{name: "test_tool", description: "Test tool"}]
+        )
 
       # Would test actual tool call over WebRTC
       assert provider.type == :webrtc
@@ -179,10 +190,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires actual peer connection
       # Skipped for unit tests
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "remote_peer"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "remote_peer"
+        )
 
       assert provider.type == :webrtc
     end
@@ -192,10 +204,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
       # This test requires actual peer connection
       # Skipped for unit tests
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        peer_id: "nonexistent_peer"
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          peer_id: "nonexistent_peer"
+        )
 
       assert provider.type == :webrtc
     end
@@ -206,7 +219,7 @@ defmodule ExUtcp.Transports.WebRTCTest do
       provider = Providers.new_webrtc_provider(name: "test_webrtc")
 
       assert is_list(provider.ice_servers)
-      assert length(provider.ice_servers) > 0
+      refute Enum.empty?(provider.ice_servers)
 
       # Should have Google STUN server by default
       stun_server = hd(provider.ice_servers)
@@ -223,10 +236,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
         }
       ]
 
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        ice_servers: turn_servers
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          ice_servers: turn_servers
+        )
 
       assert provider.ice_servers == turn_servers
       turn_server = hd(provider.ice_servers)
@@ -235,10 +249,11 @@ defmodule ExUtcp.Transports.WebRTCTest do
     end
 
     test "configures timeout" do
-      provider = Providers.new_webrtc_provider(
-        name: "test_webrtc",
-        timeout: 60_000
-      )
+      provider =
+        Providers.new_webrtc_provider(
+          name: "test_webrtc",
+          timeout: 60_000
+        )
 
       assert provider.timeout == 60_000
     end

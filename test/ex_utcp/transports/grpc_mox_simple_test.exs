@@ -1,10 +1,11 @@
 defmodule ExUtcp.Transports.GrpcMoxSimpleTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   import Mox
 
   alias ExUtcp.Transports.Grpc
+
+  @moduletag :unit
 
   # Mocks are defined in test_helper.exs
 
@@ -13,17 +14,21 @@ defmodule ExUtcp.Transports.GrpcMoxSimpleTest do
   setup do
     # Stop any running GenServer to ensure clean state
     case Process.whereis(Grpc) do
-      nil -> :ok
+      nil ->
+        :ok
+
       pid ->
         try do
           if Process.alive?(pid) do
             GenServer.stop(pid, :normal, 500)
-            Process.sleep(300) # Give it more time to stop
+            # Give it more time to stop
+            Process.sleep(300)
           end
         rescue
           _ -> :ok
         end
     end
+
     :ok
   end
 
@@ -55,7 +60,7 @@ defmodule ExUtcp.Transports.GrpcMoxSimpleTest do
 
       # Test with invalid provider type
       assert {:error, "gRPC transport can only be used with gRPC providers"} =
-        Grpc.register_tool_provider(invalid_provider)
+               Grpc.register_tool_provider(invalid_provider)
     end
 
     @tag :genserver_lifecycle
@@ -88,17 +93,20 @@ defmodule ExUtcp.Transports.GrpcMoxSimpleTest do
     end
 
     test "handles retry configuration" do
-      transport = Grpc.new(
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      )
+      transport =
+        Grpc.new(
+          max_retries: 5,
+          retry_delay: 2000,
+          backoff_multiplier: 2.0
+        )
+
       assert %Grpc{} = transport
+
       assert transport.retry_config == %{
-        max_retries: 5,
-        retry_delay: 2000,
-        backoff_multiplier: 2.0
-      }
+               max_retries: 5,
+               retry_delay: 2000,
+               backoff_multiplier: 2.0
+             }
     end
 
     test "handles pool configuration" do

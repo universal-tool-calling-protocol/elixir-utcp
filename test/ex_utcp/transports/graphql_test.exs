@@ -1,18 +1,21 @@
 defmodule ExUtcp.Transports.GraphqlTest do
   use ExUnit.Case, async: false
-  @moduletag :integration
+
   import Mox
 
-  alias ExUtcp.Transports.Graphql
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.Graphql
 
+  @moduletag :integration
   setup :verify_on_exit!
 
   describe "GraphQL Transport" do
     setup do
       # Clean up any existing GraphQL transport
       case Process.whereis(Graphql) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           try do
             GenServer.stop(pid)
@@ -20,6 +23,7 @@ defmodule ExUtcp.Transports.GraphqlTest do
             _ -> :ok
           end
       end
+
       :ok
     end
 
@@ -56,21 +60,21 @@ defmodule ExUtcp.Transports.GraphqlTest do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "GraphQL transport can only be used with GraphQL providers"} =
-        Graphql.register_tool_provider(http_provider)
+               Graphql.register_tool_provider(http_provider)
     end
 
     test "handles invalid provider in call_tool" do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "GraphQL transport can only be used with GraphQL providers"} =
-        Graphql.call_tool("test_tool", %{}, http_provider)
+               Graphql.call_tool("test_tool", %{}, http_provider)
     end
 
     test "handles invalid provider in call_tool_stream" do
       http_provider = Providers.new_http_provider(name: "test", url: "http://example.com")
 
       assert {:error, "GraphQL transport can only be used with GraphQL providers"} =
-        Graphql.call_tool_stream("test_tool", %{}, http_provider)
+               Graphql.call_tool_stream("test_tool", %{}, http_provider)
     end
 
     test "deregister_tool_provider always succeeds" do
@@ -84,25 +88,30 @@ defmodule ExUtcp.Transports.GraphqlTest do
     end
 
     test "provides GraphQL functionality" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://localhost:4000"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://localhost:4000"
+        )
 
       # Test GraphQL operations (these will succeed with the mock implementation)
       assert {:ok, %{"result" => _}} = Graphql.query(provider, "query { test }", %{})
       assert {:ok, %{"result" => _}} = Graphql.mutation(provider, "mutation { test }", %{})
-      assert {:ok, [%{"data" => _}]} = Graphql.subscription(provider, "subscription { test }", %{})
+
+      assert {:ok, [%{"data" => _}]} =
+               Graphql.subscription(provider, "subscription { test }", %{})
+
       assert {:ok, %{"__schema" => _}} = Graphql.introspect_schema(provider)
     end
   end
 
   describe "GraphQL Provider" do
     test "creates new graphql provider" do
-      provider = Providers.new_graphql_provider([
-        name: "test_graphql",
-        url: "http://localhost:4000"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test_graphql",
+          url: "http://localhost:4000"
+        )
 
       assert provider.name == "test_graphql"
       assert provider.type == :graphql
@@ -114,12 +123,13 @@ defmodule ExUtcp.Transports.GraphqlTest do
     test "creates graphql provider with all options" do
       auth = ExUtcp.Auth.new_api_key_auth(api_key: "test-key", location: "header")
 
-      provider = Providers.new_graphql_provider([
-        name: "test_graphql",
-        url: "http://localhost:4000",
-        auth: auth,
-        headers: %{"X-Custom-Header" => "value"}
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test_graphql",
+          url: "http://localhost:4000",
+          auth: auth,
+          headers: %{"X-Custom-Header" => "value"}
+        )
 
       assert provider.name == "test_graphql"
       assert provider.type == :graphql
@@ -141,40 +151,47 @@ defmodule ExUtcp.Transports.GraphqlTest do
       case Process.whereis(Graphql) do
         nil ->
           {:ok, _pid} = Graphql.start_link()
+
         _pid ->
           :ok
       end
+
       :ok
     end
 
     test "handles connection errors gracefully" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://invalid-host-that-does-not-exist:9999"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://invalid-host-that-does-not-exist:9999"
+        )
 
       # With the mock implementation, this will succeed
       assert {:ok, []} = Graphql.register_tool_provider(provider)
     end
 
     test "handles tool call errors gracefully" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://invalid-host-that-does-not-exist:9999"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://invalid-host-that-does-not-exist:9999"
+        )
 
       # With the mock implementation, this will succeed
-      assert {:ok, %{"result" => _}} = Graphql.call_tool("test.tool", %{"arg" => "value"}, provider)
+      assert {:ok, %{"result" => _}} =
+               Graphql.call_tool("test.tool", %{"arg" => "value"}, provider)
     end
 
     test "handles tool stream errors gracefully" do
-      provider = Providers.new_graphql_provider([
-        name: "test",
-        url: "http://invalid-host-that-does-not-exist:9999"
-      ])
+      provider =
+        Providers.new_graphql_provider(
+          name: "test",
+          url: "http://invalid-host-that-does-not-exist:9999"
+        )
 
       # With the mock implementation, this will succeed
-      assert {:ok, %{type: :stream, data: _}} = Graphql.call_tool_stream("test.tool", %{"arg" => "value"}, provider)
+      assert {:ok, %{type: :stream, data: _}} =
+               Graphql.call_tool_stream("test.tool", %{"arg" => "value"}, provider)
     end
   end
 end

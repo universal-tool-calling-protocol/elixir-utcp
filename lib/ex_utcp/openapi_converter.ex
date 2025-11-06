@@ -62,6 +62,7 @@ defmodule ExUtcp.OpenApiConverter do
         description: parsed_spec.info.description || "Tools generated from OpenAPI specification",
         tools: tools
       }
+
       {:ok, manual}
     end
   end
@@ -130,6 +131,7 @@ defmodule ExUtcp.OpenApiConverter do
         {_status, manuals} = Enum.unzip(results)
         merged_manual = merge_manuals(manuals, opts)
         {:ok, merged_manual}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -169,13 +171,17 @@ defmodule ExUtcp.OpenApiConverter do
     case Req.get(url, receive_timeout: 30_000) do
       {:ok, response} ->
         # Extract content type from headers
-        content_type = case response.headers["content-type"] do
-          [content_type | _] -> content_type
-          content_type when is_binary(content_type) -> content_type
-          _ -> "application/json"
-        end
+        content_type =
+          case response.headers["content-type"] do
+            [content_type | _] -> content_type
+            content_type when is_binary(content_type) -> content_type
+            _ -> "application/json"
+          end
+
         {:ok, %{body: response.body, content_type: content_type}}
-      {:error, reason} -> {:error, "Failed to fetch spec from URL: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Failed to fetch spec from URL: #{inspect(reason)}"}
     end
   end
 
@@ -189,15 +195,19 @@ defmodule ExUtcp.OpenApiConverter do
           {:ok, spec} -> {:ok, spec}
           {:error, reason} -> {:error, "Invalid JSON: #{inspect(reason)}"}
         end
+
       "application/yaml" ->
         case YamlElixir.read_from_string(content_str) do
           {:ok, spec} -> {:ok, spec}
           {:error, reason} -> {:error, "Invalid YAML: #{inspect(reason)}"}
         end
+
       _ ->
         # Try JSON first, then YAML
         case Jason.decode(content_str) do
-          {:ok, spec} -> {:ok, spec}
+          {:ok, spec} ->
+            {:ok, spec}
+
           {:error, _} ->
             case YamlElixir.read_from_string(content_str) do
               {:ok, spec} -> {:ok, spec}
@@ -219,13 +229,14 @@ defmodule ExUtcp.OpenApiConverter do
     all_tools = Enum.flat_map(manuals, & &1.tools)
     prefix = Keyword.get(opts, :prefix, "")
 
-    prefixed_tools = if prefix != "" do
-      Enum.map(all_tools, fn tool ->
-        %{tool | name: "#{prefix}.#{tool.name}"}
-      end)
-    else
-      all_tools
-    end
+    prefixed_tools =
+      if prefix == "" do
+        all_tools
+      else
+        Enum.map(all_tools, fn tool ->
+          %{tool | name: "#{prefix}.#{tool.name}"}
+        end)
+      end
 
     %{
       name: "Merged OpenAPI Tools",

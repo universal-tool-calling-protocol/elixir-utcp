@@ -1,8 +1,9 @@
 defmodule ExUtcp.Search.SemanticTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   alias ExUtcp.Search.Semantic
+
+  @moduletag :unit
 
   describe "Keyword Extraction" do
     test "extracts keywords from text" do
@@ -85,18 +86,21 @@ defmodule ExUtcp.Search.SemanticTest do
         create_test_tool("send_notification", "Send email notification to users")
       ]
 
-      results = Semantic.search_tools_with_keywords(tools, "user information", %{
-        threshold: 0.2,
-        include_descriptions: true
-      })
+      results =
+        Semantic.search_tools_with_keywords(tools, "user information", %{
+          threshold: 0.2,
+          include_descriptions: true
+        })
 
       assert is_list(results)
       assert length(results) >= 1
 
       # Should find user-related tools
-      user_tools = Enum.filter(results, fn result ->
-        String.contains?(result.tool.definition.description, "user")
-      end)
+      user_tools =
+        Enum.filter(results, fn result ->
+          String.contains?(result.tool.definition.description, "user")
+        end)
+
       assert length(user_tools) >= 1
     end
 
@@ -108,14 +112,16 @@ defmodule ExUtcp.Search.SemanticTest do
       ]
 
       # Test with Haystack (may fallback to keyword search if Haystack fails)
-      results = Semantic.search_tools_with_haystack(tools, "search documents", %{
-        threshold: 0.2,
-        limit: 10
-      })
+      results =
+        Semantic.search_tools_with_haystack(tools, "search documents", %{
+          threshold: 0.2,
+          limit: 10
+        })
 
       assert is_list(results)
       # Should find at least one relevant tool
-      assert length(results) >= 0  # May be 0 if Haystack integration fails
+      # May be 0 if Haystack integration fails
+      assert length(results) >= 0
     end
 
     test "creates tools index for Haystack" do
@@ -148,9 +154,11 @@ defmodule ExUtcp.Search.SemanticTest do
       assert length(similar_tools) >= 1
 
       # Should find user-related tools
-      user_tools = Enum.filter(similar_tools, fn result ->
-        String.contains?(result.tool.definition.description, "user")
-      end)
+      user_tools =
+        Enum.filter(similar_tools, fn result ->
+          String.contains?(result.tool.definition.description, "user")
+        end)
+
       assert length(user_tools) >= 1
     end
 
@@ -161,7 +169,7 @@ defmodule ExUtcp.Search.SemanticTest do
       similar_tools = Semantic.find_similar_tools(reference_tool, candidate_tools, 0.1)
 
       # Should not include the reference tool (it's not in candidate_tools)
-      tool_names = Enum.map(similar_tools, &(&1.tool.name))
+      tool_names = Enum.map(similar_tools, & &1.tool.name)
       refute "get_user" in tool_names
     end
   end

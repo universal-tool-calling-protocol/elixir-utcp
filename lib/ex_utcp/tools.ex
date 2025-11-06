@@ -70,7 +70,7 @@ defmodule ExUtcp.Tools do
 
     String.downcase(tool.name) |> String.contains?(query_lower) or
       String.downcase(tool.description) |> String.contains?(query_lower) or
-      Enum.any?(tool.tags, &String.downcase(&1) |> String.contains?(query_lower))
+      Enum.any?(tool.tags, &(String.downcase(&1) |> String.contains?(query_lower)))
   end
 
   @doc """

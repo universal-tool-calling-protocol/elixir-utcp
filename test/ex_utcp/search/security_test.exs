@@ -1,8 +1,9 @@
 defmodule ExUtcp.Search.SecurityTest do
   use ExUnit.Case, async: true
-  @moduletag :unit
 
   alias ExUtcp.Search.{Security, Semantic}
+
+  @moduletag :unit
 
   describe "Tool Security Scanning" do
     test "scans tool for sensitive data" do
@@ -150,7 +151,7 @@ defmodule ExUtcp.Search.SecurityTest do
 
       assert is_list(filtered_results)
       # Should filter out tools with sensitive data
-      tool_names = Enum.map(filtered_results, &(&1.tool.name))
+      tool_names = Enum.map(filtered_results, & &1.tool.name)
       assert "clean_tool" in tool_names
       # May or may not filter sensitive_tool depending on detection
     end
@@ -217,10 +218,11 @@ defmodule ExUtcp.Search.SecurityTest do
       ]
 
       # Test Haystack search (may fallback to keyword search)
-      results = Semantic.search_tools_with_haystack(tools, "document search", %{
-        threshold: 0.2,
-        limit: 5
-      })
+      results =
+        Semantic.search_tools_with_haystack(tools, "document search", %{
+          threshold: 0.2,
+          limit: 5
+        })
 
       assert is_list(results)
       # Should return results or fallback gracefully
@@ -234,18 +236,21 @@ defmodule ExUtcp.Search.SecurityTest do
         create_test_tool("data_analyzer", "Analyze user behavior data")
       ]
 
-      results = Semantic.search_tools_with_keywords(tools, "user data", %{
-        threshold: 0.2,
-        include_descriptions: true
-      })
+      results =
+        Semantic.search_tools_with_keywords(tools, "user data", %{
+          threshold: 0.2,
+          include_descriptions: true
+        })
 
       assert is_list(results)
       assert length(results) >= 1
 
       # Should find user-related tools
-      user_tools = Enum.filter(results, fn result ->
-        String.contains?(result.tool.definition.description, "user")
-      end)
+      user_tools =
+        Enum.filter(results, fn result ->
+          String.contains?(result.tool.definition.description, "user")
+        end)
+
       assert length(user_tools) >= 1
     end
   end

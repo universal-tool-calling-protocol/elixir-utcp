@@ -14,9 +14,9 @@ defmodule ExUtcp.Transports.Graphql do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  require Logger
-
   alias ExUtcp.Transports.Graphql.{Connection, Pool, Schema}
+
+  require Logger
 
   defstruct [
     :logger,
@@ -62,7 +62,9 @@ defmodule ExUtcp.Transports.Graphql do
           {:ok, tools} -> {:ok, tools}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "GraphQL transport can only be used with GraphQL providers"}
+
+      _ ->
+        {:error, "GraphQL transport can only be used with GraphQL providers"}
     end
   end
 
@@ -71,7 +73,9 @@ defmodule ExUtcp.Transports.Graphql do
     case provider.type do
       :graphql ->
         GenServer.call(__MODULE__, {:deregister_tool_provider, provider})
-      _ -> {:error, "GraphQL transport can only be used with GraphQL providers"}
+
+      _ ->
+        {:error, "GraphQL transport can only be used with GraphQL providers"}
     end
   end
 
@@ -83,7 +87,9 @@ defmodule ExUtcp.Transports.Graphql do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "GraphQL transport can only be used with GraphQL providers"}
+
+      _ ->
+        {:error, "GraphQL transport can only be used with GraphQL providers"}
     end
   end
 
@@ -95,7 +101,9 @@ defmodule ExUtcp.Transports.Graphql do
           {:ok, result} -> {:ok, result}
           {:error, reason} -> {:error, reason}
         end
-      _ -> {:error, "GraphQL transport can only be used with GraphQL providers"}
+
+      _ ->
+        {:error, "GraphQL transport can only be used with GraphQL providers"}
     end
   end
 
@@ -141,7 +149,10 @@ defmodule ExUtcp.Transports.Graphql do
   """
   @spec subscription(pid(), String.t(), map(), keyword()) :: {:ok, [map()]} | {:error, term()}
   def subscription(provider, subscription_string, variables \\ %{}, opts \\ []) do
-    case GenServer.call(__MODULE__, {:subscription, provider, subscription_string, variables, opts}) do
+    case GenServer.call(
+           __MODULE__,
+           {:subscription, provider, subscription_string, variables, opts}
+         ) do
       {:ok, result} -> {:ok, result}
       {:error, reason} -> {:error, reason}
     end
@@ -168,6 +179,7 @@ defmodule ExUtcp.Transports.Graphql do
     case Pool.start_link(state.pool_opts) do
       {:ok, _pool_pid} ->
         {:ok, state}
+
       {:error, reason} ->
         {:stop, reason}
     end
@@ -206,9 +218,13 @@ defmodule ExUtcp.Transports.Graphql do
 
   @impl GenServer
   def handle_call({:query, provider, query_string, variables, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Connection.query(conn, query_string, variables, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Connection.query(conn, query_string, variables, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -216,9 +232,13 @@ defmodule ExUtcp.Transports.Graphql do
 
   @impl GenServer
   def handle_call({:mutation, provider, mutation_string, variables, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Connection.mutation(conn, mutation_string, variables, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Connection.mutation(conn, mutation_string, variables, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -226,9 +246,13 @@ defmodule ExUtcp.Transports.Graphql do
 
   @impl GenServer
   def handle_call({:subscription, provider, subscription_string, variables, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Connection.subscription(conn, subscription_string, variables, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Connection.subscription(conn, subscription_string, variables, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -236,9 +260,13 @@ defmodule ExUtcp.Transports.Graphql do
 
   @impl GenServer
   def handle_call({:introspect_schema, provider, opts}, _from, state) do
-    case get_connection_and_execute(provider, fn conn ->
-      Connection.introspect_schema(conn, opts)
-    end, state) do
+    case get_connection_and_execute(
+           provider,
+           fn conn ->
+             Connection.introspect_schema(conn, opts)
+           end,
+           state
+         ) do
       {:ok, result} -> {:reply, {:ok, result}, state}
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
@@ -253,59 +281,88 @@ defmodule ExUtcp.Transports.Graphql do
   # Private functions
 
   defp discover_tools(provider, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          case Connection.introspect_schema(conn, [timeout: state.connection_timeout]) do
-            {:ok, schema} ->
-              tools = Schema.extract_tools(schema)
-              {:ok, tools}
-            {:error, reason} -> {:error, "Failed to discover tools: #{inspect(reason)}"}
-          end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            case Connection.introspect_schema(conn, timeout: state.connection_timeout) do
+              {:ok, schema} ->
+                tools = Schema.extract_tools(schema)
+                {:ok, tools}
+
+              {:error, reason} ->
+                {:error, "Failed to discover tools: #{inspect(reason)}"}
+            end
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp execute_tool_call(tool_name, args, provider, state) do
-    with_retry(fn ->
+    with_retry(
+      fn ->
         case Pool.get_connection(provider) do
           {:ok, conn} ->
             # Convert tool call to GraphQL query
             case build_graphql_operation(tool_name, args) do
               {:query, query_string, variables} ->
-                case Connection.query(conn, query_string, variables, [timeout: state.connection_timeout]) do
+                case Connection.query(conn, query_string, variables,
+                       timeout: state.connection_timeout
+                     ) do
                   {:ok, result} -> {:ok, result}
                   {:error, reason} -> {:error, "Failed to execute query: #{inspect(reason)}"}
                 end
             end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp execute_tool_stream(tool_name, args, provider, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          # Convert tool stream to GraphQL subscription
-          case build_graphql_subscription(tool_name, args) do
-            {:subscription, subscription_string, variables} ->
-              case Connection.subscription(conn, subscription_string, variables, [timeout: state.connection_timeout]) do
-                {:ok, results} ->
-                  # Create a proper streaming result with enhanced metadata
-                  stream = create_graphql_stream(results, tool_name, provider)
-                  {:ok, %{type: :stream, data: stream, metadata: %{"transport" => "graphql", "tool" => tool_name, "subscription" => true}}}
-                {:error, reason} ->
-                  {:error, "Failed to execute subscription: #{inspect(reason)}"}
-              end
-          end
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            # Convert tool stream to GraphQL subscription
+            case build_graphql_subscription(tool_name, args) do
+              {:subscription, subscription_string, variables} ->
+                case Connection.subscription(conn, subscription_string, variables,
+                       timeout: state.connection_timeout
+                     ) do
+                  {:ok, results} ->
+                    # Create a proper streaming result with enhanced metadata
+                    stream = create_graphql_stream(results, tool_name, provider)
+
+                    {:ok,
+                     %{
+                       type: :stream,
+                       data: stream,
+                       metadata: %{
+                         "transport" => "graphql",
+                         "tool" => tool_name,
+                         "subscription" => true
+                       }
+                     }}
+
+                  {:error, reason} ->
+                    {:error, "Failed to execute subscription: #{inspect(reason)}"}
+                end
+            end
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp create_graphql_stream(results, tool_name, provider) do
@@ -326,14 +383,18 @@ defmodule ExUtcp.Transports.Graphql do
   end
 
   defp get_connection_and_execute(provider, fun, state) do
-    with_retry(fn ->
-      case Pool.get_connection(provider) do
-        {:ok, conn} ->
-          fun.(conn)
-        {:error, reason} ->
-          {:error, "Failed to get connection: #{inspect(reason)}"}
-      end
-    end, state.retry_config)
+    with_retry(
+      fn ->
+        case Pool.get_connection(provider) do
+          {:ok, conn} ->
+            fun.(conn)
+
+          {:error, reason} ->
+            {:error, "Failed to get connection: #{inspect(reason)}"}
+        end
+      end,
+      state.retry_config
+    )
   end
 
   defp build_graphql_operation(tool_name, args) do
@@ -371,12 +432,16 @@ defmodule ExUtcp.Transports.Graphql do
 
   defp with_retry(fun, retry_config, attempt \\ 0) do
     case fun.() do
-      {:ok, result} -> {:ok, result}
+      {:ok, result} ->
+        {:ok, result}
+
       {:error, _reason} when attempt < retry_config.max_retries ->
         delay = retry_config.retry_delay * :math.pow(retry_config.backoff_multiplier, attempt)
         :timer.sleep(round(delay))
         with_retry(fun, retry_config, attempt + 1)
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 end

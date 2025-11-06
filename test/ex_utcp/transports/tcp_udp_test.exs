@@ -1,7 +1,8 @@
 defmodule ExUtcp.Transports.TcpUdpTest do
   use ExUnit.Case, async: false
-  alias ExUtcp.Transports.TcpUdp
+
   alias ExUtcp.Providers
+  alias ExUtcp.Transports.TcpUdp
 
   setup do
     # Start the transport
@@ -45,21 +46,23 @@ defmodule ExUtcp.Transports.TcpUdpTest do
 
   describe "Provider Registration" do
     test "registers TCP provider successfully" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       assert {:ok, []} = TcpUdp.register_tool_provider(provider)
     end
 
     test "registers UDP provider successfully" do
-      provider = Providers.new_udp_provider(
-        name: "test_udp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_udp_provider(
+          name: "test_udp",
+          host: "localhost",
+          port: 8080
+        )
 
       assert {:ok, []} = TcpUdp.register_tool_provider(provider)
     end
@@ -73,7 +76,7 @@ defmodule ExUtcp.Transports.TcpUdpTest do
       }
 
       assert {:error, "TCP/UDP transport can only be used with TCP or UDP providers"} =
-        TcpUdp.register_tool_provider(provider)
+               TcpUdp.register_tool_provider(provider)
     end
 
     test "validates TCP provider fields" do
@@ -85,7 +88,7 @@ defmodule ExUtcp.Transports.TcpUdpTest do
       }
 
       assert {:error, "TCP provider missing required field: :host"} =
-        TcpUdp.register_tool_provider(provider)
+               TcpUdp.register_tool_provider(provider)
     end
 
     test "validates UDP provider fields" do
@@ -97,15 +100,16 @@ defmodule ExUtcp.Transports.TcpUdpTest do
       }
 
       assert {:error, "UDP provider missing required field: :port"} =
-        TcpUdp.register_tool_provider(provider)
+               TcpUdp.register_tool_provider(provider)
     end
 
     test "deregisters provider successfully" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       assert {:ok, []} = TcpUdp.register_tool_provider(provider)
       assert :ok = TcpUdp.deregister_tool_provider(provider)
@@ -114,28 +118,29 @@ defmodule ExUtcp.Transports.TcpUdpTest do
 
   describe "Tool Execution" do
     setup do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
       %{provider: provider}
     end
 
-  @tag :integration
-  test "calls tool successfully", %{provider: provider} do
-    # This will fail in unit tests since we don't have a real server
-    # but we can test the error handling
-    result = catch_exit(TcpUdp.call_tool("test_tool", %{"message" => "hello"}, provider))
+    @tag :integration
+    test "calls tool successfully", %{provider: provider} do
+      # This will fail in unit tests since we don't have a real server
+      # but we can test the error handling
+      result = catch_exit(TcpUdp.call_tool("test_tool", %{"message" => "hello"}, provider))
 
-    # Should return an error since we can't connect to localhost:8080
-    assert match?({:error, _reason}, result) or match?({:EXIT, _reason}, result)
-  end
+      # Should return an error since we can't connect to localhost:8080
+      assert match?({:error, _reason}, result) or match?({:EXIT, _reason}, result)
+    end
 
-  @tag :integration
-  test "calls tool stream successfully", %{provider: provider} do
+    @tag :integration
+    test "calls tool stream successfully", %{provider: provider} do
       # This will fail in unit tests since we don't have a real server
       # but we can test the error handling
       result = catch_exit(TcpUdp.call_tool_stream("test_tool", %{"message" => "hello"}, provider))
@@ -146,27 +151,29 @@ defmodule ExUtcp.Transports.TcpUdpTest do
   end
 
   describe "Error Handling" do
-  @tag :integration
-  test "handles connection failures gracefully" do
-    provider = Providers.new_tcp_provider(
-      name: "test_tcp",
-      host: "nonexistent.example.com",
-      port: 9999
-    )
+    @tag :integration
+    test "handles connection failures gracefully" do
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "nonexistent.example.com",
+          port: 9999
+        )
 
-    {:ok, []} = TcpUdp.register_tool_provider(provider)
+      {:ok, []} = TcpUdp.register_tool_provider(provider)
 
-    result = catch_exit(TcpUdp.call_tool("test_tool", %{"message" => "hello"}, provider))
-    assert match?({:error, _reason}, result) or match?({:EXIT, _reason}, result)
-  end
+      result = catch_exit(TcpUdp.call_tool("test_tool", %{"message" => "hello"}, provider))
+      assert match?({:error, _reason}, result) or match?({:EXIT, _reason}, result)
+    end
 
     @tag :integration
     test "handles invalid tool calls" do
-      provider = Providers.new_tcp_provider(
-        name: "test_tcp",
-        host: "localhost",
-        port: 8080
-      )
+      provider =
+        Providers.new_tcp_provider(
+          name: "test_tcp",
+          host: "localhost",
+          port: 8080
+        )
 
       {:ok, []} = TcpUdp.register_tool_provider(provider)
 
@@ -177,7 +184,8 @@ defmodule ExUtcp.Transports.TcpUdpTest do
 
   describe "Retry Logic" do
     test "retries failed operations" do
-      transport = TcpUdp.new(retry_config: %{max_retries: 2, retry_delay: 100, backoff_multiplier: 2})
+      transport =
+        TcpUdp.new(retry_config: %{max_retries: 2, retry_delay: 100, backoff_multiplier: 2})
 
       # Test that retry logic is configured correctly
       assert transport.retry_config.max_retries == 2
