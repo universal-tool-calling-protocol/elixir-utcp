@@ -97,7 +97,7 @@ defmodule ExUtcp.Monitoring.PromEx.Plugin do
         description: "Tool call duration",
         tags: [:tool_name, :provider_name],
         unit: :millisecond,
-        buckets: [10, 50, 100, 500, 1000, 5000, 10000]
+        buckets: [10, 50, 100, 500, 1000, 5000, 10_000]
       ),
 
       # Search metrics

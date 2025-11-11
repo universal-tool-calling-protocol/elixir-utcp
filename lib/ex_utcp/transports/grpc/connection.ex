@@ -5,7 +5,9 @@ defmodule ExUtcp.Transports.Grpc.Connection do
 
   use GenServer
 
-  alias ExUtcp.Grpcpb.{UTCPService.Stub, Empty, ToolCallRequest}
+  alias ExUtcp.Grpcpb.Empty
+  alias ExUtcp.Grpcpb.ToolCallRequest
+  alias ExUtcp.Grpcpb.UTCPService.Stub
 
   require Logger
 
@@ -274,7 +276,7 @@ defmodule ExUtcp.Transports.Grpc.Connection do
 
   defp build_endpoint(provider) do
     host = Map.get(provider, :host, "localhost")
-    port = Map.get(provider, :port, 50051)
+    port = Map.get(provider, :port, 50_051)
     use_ssl = Map.get(provider, :use_ssl, false)
 
     protocol = if use_ssl, do: "https", else: "http"

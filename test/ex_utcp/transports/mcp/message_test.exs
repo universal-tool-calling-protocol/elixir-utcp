@@ -40,10 +40,10 @@ defmodule ExUtcp.Transports.Mcp.MessageTest do
     end
 
     test "builds error response message" do
-      error = Message.build_error_response(-32601, "Method not found", %{method: "invalid"}, 123)
+      error = Message.build_error_response(-32_601, "Method not found", %{method: "invalid"}, 123)
 
       assert error["jsonrpc"] == "2.0"
-      assert error["error"]["code"] == -32601
+      assert error["error"]["code"] == -32_601
       assert error["error"]["message"] == "Method not found"
       assert error["error"]["data"] == %{method: "invalid"}
       assert error["id"] == 123
@@ -94,27 +94,27 @@ defmodule ExUtcp.Transports.Mcp.MessageTest do
 
     test "identifies notification" do
       notification = %{"method" => "test", "id" => nil}
-      assert Message.is_notification?(notification)
+      assert Message.notification?(notification)
     end
 
     test "identifies request" do
       request = %{"method" => "test", "id" => 123}
-      assert Message.is_request?(request)
+      assert Message.request?(request)
     end
 
     test "identifies response" do
       response = %{"result" => %{}}
-      assert Message.is_response?(response)
+      assert Message.response?(response)
     end
 
     test "identifies error response" do
       error = %{"error" => %{"code" => -1}}
-      assert Message.is_error?(error)
+      assert Message.error?(error)
     end
 
     test "extracts error information" do
-      error = %{"error" => %{"code" => -32601, "message" => "Method not found", "data" => %{}}}
-      assert {-32601, "Method not found", %{}} = Message.extract_error(error)
+      error = %{"error" => %{"code" => -32_601, "message" => "Method not found", "data" => %{}}}
+      assert {-32_601, "Method not found", %{}} = Message.extract_error(error)
     end
 
     test "extracts result from response" do

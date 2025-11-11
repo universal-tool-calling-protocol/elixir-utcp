@@ -1,7 +1,11 @@
 defmodule ExUtcpTest do
   use ExUnit.Case
 
-  alias ExUtcp.{Client, Config, Providers, Tools, Repository}
+  alias ExUtcp.Client
+  alias ExUtcp.Config
+  alias ExUtcp.Providers
+  alias ExUtcp.Repository
+  alias ExUtcp.Tools
 
   doctest ExUtcp
 

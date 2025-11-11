@@ -88,7 +88,8 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
         headers: %{}
       }
 
-      # Mock the connection to return an error during tool discovery (expect 4 calls due to retry logic: 1 initial + 3 retries)
+      # Mock the connection to return an error during tool discovery
+      # (expect 4 calls due to retry logic: 1 initial + 3 retries)
       expect(ExUtcp.Transports.Graphql.ConnectionMock, :introspect_schema, 4, fn _conn, _opts ->
         {:error, "Schema introspection failed"}
       end)

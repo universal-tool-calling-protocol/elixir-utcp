@@ -49,7 +49,7 @@ defmodule ExUtcp.Transports.Grpc.PoolTest do
         name: "test",
         type: :grpc,
         host: "invalid-host",
-        port: 99999,
+        port: 99_999,
         service_name: "UTCPService",
         method_name: "GetManual",
         use_ssl: false
@@ -66,7 +66,7 @@ defmodule ExUtcp.Transports.Grpc.PoolTest do
         Providers.new_grpc_provider(
           name: "test",
           host: "localhost",
-          port: 50051,
+          port: 50_051,
           service_name: "UTCPService",
           method_name: "GetManual",
           use_ssl: false

@@ -1,7 +1,11 @@
 defmodule ExUtcp.Transports.SimpleUnitTest do
   use ExUnit.Case, async: true
 
-  alias ExUtcp.Transports.{Graphql, Grpc, WebSocket, Http, Cli}
+  alias ExUtcp.Transports.Cli
+  alias ExUtcp.Transports.Graphql
+  alias ExUtcp.Transports.Grpc
+  alias ExUtcp.Transports.Http
+  alias ExUtcp.Transports.WebSocket
 
   describe "Transport Unit Tests" do
     test "GraphQL transport basic functions" do

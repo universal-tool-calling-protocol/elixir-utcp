@@ -10,7 +10,7 @@ defmodule ExUtcp.Transports.Grpc.ConnectionTest do
         Providers.new_grpc_provider(
           name: "test",
           host: "localhost",
-          port: 50051,
+          port: 50_051,
           service_name: "UTCPService",
           method_name: "GetManual",
           use_ssl: false
@@ -25,7 +25,7 @@ defmodule ExUtcp.Transports.Grpc.ConnectionTest do
         Providers.new_grpc_provider(
           name: "test",
           host: "invalid-host",
-          port: 99999,
+          port: 99_999,
           service_name: "UTCPService",
           method_name: "GetManual",
           use_ssl: false

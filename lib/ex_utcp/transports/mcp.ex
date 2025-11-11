@@ -9,7 +9,8 @@ defmodule ExUtcp.Transports.Mcp do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  alias ExUtcp.Transports.Mcp.{Pool, Connection}
+  alias ExUtcp.Transports.Mcp.Connection
+  alias ExUtcp.Transports.Mcp.Pool
 
   require Logger
 

@@ -12,7 +12,10 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   use GenServer
 
   alias ExUtcp.Transports.WebRTC.Signaling
-  alias ExWebRTC.{PeerConnection, DataChannel, ICECandidate, SessionDescription}
+  alias ExWebRTC.DataChannel
+  alias ExWebRTC.ICECandidate
+  alias ExWebRTC.PeerConnection
+  alias ExWebRTC.SessionDescription
 
   require Logger
 
@@ -384,4 +387,3 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
     )
   end
 end
-

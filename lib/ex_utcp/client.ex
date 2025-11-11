@@ -8,9 +8,13 @@ defmodule ExUtcp.Client do
 
   use GenServer
 
+  alias ExUtcp.Config
   alias ExUtcp.Monitoring.Performance
+  alias ExUtcp.OpenApiConverter
+  alias ExUtcp.Providers
+  alias ExUtcp.Repository
+  alias ExUtcp.Tools
   alias ExUtcp.Types, as: T
-  alias ExUtcp.{Config, Repository, Tools, Providers, OpenApiConverter}
 
   defstruct [
     :config,
@@ -453,68 +457,53 @@ defmodule ExUtcp.Client do
   end
 
   defp call_tool_impl(state, tool_name, args) do
-    case Repository.get_tool(state.repository, tool_name) do
-      nil ->
-        {:error, "Tool not found: #{tool_name}"}
+    with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
+         provider_name <- Tools.extract_provider_name(tool_name),
+         {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
+         {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
+      call_name = extract_call_name(provider.type, tool_name)
+      _transport = transport_module.new()
+      transport_module.call_tool(call_name, args, provider)
+    end
+  end
 
-      _tool ->
-        provider_name = Tools.extract_provider_name(tool_name)
+  defp get_tool_or_error(repository, tool_name) do
+    case Repository.get_tool(repository, tool_name) do
+      nil -> {:error, "Tool not found: #{tool_name}"}
+      tool -> {:ok, tool}
+    end
+  end
 
-        case Repository.get_provider(state.repository, provider_name) do
-          nil ->
-            {:error, "Provider not found: #{provider_name}"}
+  defp get_provider_or_error(repository, provider_name) do
+    case Repository.get_provider(repository, provider_name) do
+      nil -> {:error, "Provider not found: #{provider_name}"}
+      provider -> {:ok, provider}
+    end
+  end
 
-          provider ->
-            transport_module = Map.get(state.transports, to_string(provider.type))
+  defp get_transport_or_error(transports, provider_type) do
+    case Map.get(transports, to_string(provider_type)) do
+      nil -> {:error, "No transport available for provider type: #{provider_type}"}
+      transport_module -> {:ok, transport_module}
+    end
+  end
 
-            if is_nil(transport_module) do
-              {:error, "No transport available for provider type: #{provider.type}"}
-            else
-              _transport = transport_module.new()
-
-              call_name =
-                if provider.type in [:mcp, :text] do
-                  Tools.extract_tool_name(tool_name)
-                else
-                  tool_name
-                end
-
-              transport_module.call_tool(call_name, args, provider)
-            end
-        end
+  defp extract_call_name(provider_type, tool_name) do
+    if provider_type in [:mcp, :text] do
+      Tools.extract_tool_name(tool_name)
+    else
+      tool_name
     end
   end
 
   defp call_tool_stream_impl(state, tool_name, args) do
-    case Repository.get_tool(state.repository, tool_name) do
-      nil ->
-        {:error, "Tool not found: #{tool_name}"}
-
-      _tool ->
-        provider_name = Tools.extract_provider_name(tool_name)
-
-        case Repository.get_provider(state.repository, provider_name) do
-          nil ->
-            {:error, "Provider not found: #{provider_name}"}
-
-          provider ->
-            transport_module = Map.get(state.transports, to_string(provider.type))
-
-            if is_nil(transport_module) do
-              {:error, "No transport available for provider type: #{provider.type}"}
-            else
-              _transport = transport_module.new()
-
-              call_name =
-                if provider.type in [:mcp, :text] do
-                  Tools.extract_tool_name(tool_name)
-                else
-                  tool_name
-                end
-
-              transport_module.call_tool_stream(call_name, args, provider)
-            end
-        end
+    with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
+         provider_name <- Tools.extract_provider_name(tool_name),
+         {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
+         {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
+      call_name = extract_call_name(provider.type, tool_name)
+      _transport = transport_module.new()
+      transport_module.call_tool_stream(call_name, args, provider)
     end
   end
 

@@ -133,7 +133,7 @@ defmodule ExUtcp.StreamingTest do
         Providers.new_grpc_provider(
           name: "test_grpc",
           host: "localhost",
-          port: 50051,
+          port: 50_051,
           service_name: "TestService",
           method_name: "StreamData"
         )

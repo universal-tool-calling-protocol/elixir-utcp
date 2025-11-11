@@ -228,5 +228,3 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
     "peer_#{:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)}"
   end
 end
-
-

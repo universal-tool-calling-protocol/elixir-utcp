@@ -33,7 +33,8 @@ defmodule ExUtcp.OpenApiConverter do
       })
   """
 
-  alias ExUtcp.OpenApiConverter.{Parser, Generator}
+  alias ExUtcp.OpenApiConverter.Generator
+  alias ExUtcp.OpenApiConverter.Parser
 
   @doc """
   Converts an OpenAPI specification to a UTCP manual.
@@ -186,34 +187,44 @@ defmodule ExUtcp.OpenApiConverter do
   end
 
   defp parse_spec_content(content, content_type) do
-    # Ensure content is a string
-    content_str = if is_binary(content), do: content, else: inspect(content)
+    content_str = ensure_string(content)
 
     case content_type do
-      "application/json" ->
-        case Jason.decode(content_str) do
-          {:ok, spec} -> {:ok, spec}
-          {:error, reason} -> {:error, "Invalid JSON: #{inspect(reason)}"}
-        end
+      "application/json" -> parse_json(content_str)
+      "application/yaml" -> parse_yaml(content_str)
+      _ -> try_parse_both_formats(content_str)
+    end
+  end
 
-      "application/yaml" ->
-        case YamlElixir.read_from_string(content_str) do
-          {:ok, spec} -> {:ok, spec}
-          {:error, reason} -> {:error, "Invalid YAML: #{inspect(reason)}"}
-        end
+  defp ensure_string(content) do
+    if is_binary(content), do: content, else: inspect(content)
+  end
 
-      _ ->
-        # Try JSON first, then YAML
-        case Jason.decode(content_str) do
-          {:ok, spec} ->
-            {:ok, spec}
+  defp parse_json(content_str) do
+    case Jason.decode(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid JSON: #{inspect(reason)}"}
+    end
+  end
 
-          {:error, _} ->
-            case YamlElixir.read_from_string(content_str) do
-              {:ok, spec} -> {:ok, spec}
-              {:error, reason} -> {:error, "Invalid spec format: #{inspect(reason)}"}
-            end
-        end
+  defp parse_yaml(content_str) do
+    case YamlElixir.read_from_string(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid YAML: #{inspect(reason)}"}
+    end
+  end
+
+  defp try_parse_both_formats(content_str) do
+    case parse_json(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, _} -> parse_yaml_or_error(content_str)
+    end
+  end
+
+  defp parse_yaml_or_error(content_str) do
+    case YamlElixir.read_from_string(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid spec format: #{inspect(reason)}"}
     end
   end
 

@@ -98,34 +98,39 @@ defmodule ExUtcp.Auth do
   @spec validate_auth(T.auth()) :: :ok | {:error, String.t()}
   def validate_auth(auth) do
     case auth.type do
-      "api_key" ->
-        if is_nil(auth.api_key) or auth.api_key == "" do
-          {:error, "API key is required for API key authentication"}
-        else
-          :ok
-        end
-
-      "basic" ->
-        if is_nil(auth.username) or auth.username == "" or
-             is_nil(auth.password) or auth.password == "" do
-          {:error, "Username and password are required for Basic authentication"}
-        else
-          :ok
-        end
-
-      "oauth2" ->
-        if is_nil(auth.client_id) or auth.client_id == "" or
-             is_nil(auth.client_secret) or auth.client_secret == "" or
-             is_nil(auth.token_url) or auth.token_url == "" or
-             is_nil(auth.scope) or auth.scope == "" do
-          {:error,
-           "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
-        else
-          :ok
-        end
-
-      _ ->
-        {:error, "Unknown authentication type: #{auth.type}"}
+      "api_key" -> validate_api_key_auth(auth)
+      "basic" -> validate_basic_auth(auth)
+      "oauth2" -> validate_oauth2_auth(auth)
+      _ -> {:error, "Unknown authentication type: #{auth.type}"}
     end
   end
+
+  defp validate_api_key_auth(auth) do
+    if valid_field?(auth.api_key) do
+      :ok
+    else
+      {:error, "API key is required for API key authentication"}
+    end
+  end
+
+  defp validate_basic_auth(auth) do
+    if valid_field?(auth.username) and valid_field?(auth.password) do
+      :ok
+    else
+      {:error, "Username and password are required for Basic authentication"}
+    end
+  end
+
+  defp validate_oauth2_auth(auth) do
+    required_fields = [auth.client_id, auth.client_secret, auth.token_url, auth.scope]
+
+    if Enum.all?(required_fields, &valid_field?/1) do
+      :ok
+    else
+      {:error,
+       "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
+    end
+  end
+
+  defp valid_field?(field), do: not is_nil(field) and field != ""
 end

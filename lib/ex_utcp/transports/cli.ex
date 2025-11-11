@@ -222,8 +222,9 @@ defmodule ExUtcp.Transports.Cli do
     tools =
       output
       |> String.split("\n")
-      |> Enum.filter(&String.starts_with?(&1, "{"))
-      |> Enum.filter(&String.ends_with?(&1, "}"))
+      |> Enum.filter(fn line ->
+        String.starts_with?(line, "{") && String.ends_with?(line, "}")
+      end)
       |> Enum.flat_map(fn line ->
         case Jason.decode(line) do
           {:ok, data} -> [normalize_tool(data, provider)]

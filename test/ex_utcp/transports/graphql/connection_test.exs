@@ -2,7 +2,9 @@ defmodule ExUtcp.Transports.Graphql.ConnectionTest do
   use ExUnit.Case, async: false
 
   alias ExUtcp.Providers
-  alias ExUtcp.Transports.Graphql.{Connection, Testable, MockConnection}
+  alias ExUtcp.Transports.Graphql.Connection
+  alias ExUtcp.Transports.Graphql.MockConnection
+  alias ExUtcp.Transports.Graphql.Testable
 
   @moduletag :integration
 

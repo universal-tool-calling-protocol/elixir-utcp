@@ -5,7 +5,8 @@ defmodule ExUtcp.Transports.Graphql.Testable do
 
   use GenServer
 
-  alias ExUtcp.Transports.Graphql.{Schema, MockConnection}
+  alias ExUtcp.Transports.Graphql.MockConnection
+  alias ExUtcp.Transports.Graphql.Schema
 
   require Logger
 

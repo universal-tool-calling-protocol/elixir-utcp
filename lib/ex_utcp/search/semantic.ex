@@ -208,8 +208,9 @@ defmodule ExUtcp.Search.Semantic do
     |> String.downcase()
     |> String.replace(~r/[^\w\s]/, " ")
     |> String.split(~r/\s+/, trim: true)
-    |> Enum.reject(&(String.length(&1) < 3))
-    |> Enum.reject(&MapSet.member?(stop_words, &1))
+    |> Enum.reject(fn word ->
+      String.length(word) < 3 || MapSet.member?(stop_words, word)
+    end)
     |> Enum.uniq()
   end
 

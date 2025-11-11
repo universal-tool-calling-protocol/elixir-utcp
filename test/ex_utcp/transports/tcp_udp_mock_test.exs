@@ -98,7 +98,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
                                                                      "test_tool",
                                                                      %{"message" => "hello"},
-                                                                     30000 ->
+                                                                     30_000 ->
         {:ok, %{"response" => "Hello from TCP server!"}}
       end)
 
@@ -132,7 +132,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
                                                                      "test_tool",
                                                                      %{"message" => "hello"},
-                                                                     30000 ->
+                                                                     30_000 ->
         {:error, "Connection timeout"}
       end)
 
@@ -179,7 +179,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
                                                                             %{
                                                                               "message" => "hello"
                                                                             },
-                                                                            30000 ->
+                                                                            30_000 ->
         {:ok, stream}
       end)
 
@@ -248,7 +248,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
                                                                      "test_tool",
                                                                      %{"message" => "hello"},
-                                                                     30000 ->
+                                                                     30_000 ->
         {:ok, %{"response" => "Hello from TCP server!"}}
       end)
 

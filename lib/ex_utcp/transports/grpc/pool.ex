@@ -237,7 +237,7 @@ defmodule ExUtcp.Transports.Grpc.Pool do
 
   defp build_connection_key(provider) do
     host = Map.get(provider, :host, "localhost")
-    port = Map.get(provider, :port, 50051)
+    port = Map.get(provider, :port, 50_051)
     use_ssl = Map.get(provider, :use_ssl, false)
     service_name = Map.get(provider, :service_name, "UTCPService")
 

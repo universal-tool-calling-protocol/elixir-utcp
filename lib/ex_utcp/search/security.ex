@@ -184,29 +184,37 @@ defmodule ExUtcp.Search.Security do
     ]
 
     Enum.flat_map(patterns, fn {pattern, type} ->
-      case Regex.scan(pattern, text, capture: :all_but_first) do
-        [] ->
-          []
-
-        matches ->
-          Enum.map(matches, fn match ->
-            value =
-              case match do
-                [val] -> val
-                val when is_binary(val) -> val
-                _ -> "unknown"
-              end
-
-            %{
-              field: field_name,
-              type: type,
-              # Truncate for security
-              value: String.slice(value, 0, 10) <> "...",
-              confidence: 0.8,
-              line: 1
-            }
-          end)
-      end
+      scan_pattern(pattern, text, type, field_name)
     end)
+  end
+
+  defp scan_pattern(pattern, text, type, field_name) do
+    case Regex.scan(pattern, text, capture: :all_but_first) do
+      [] -> []
+      matches -> build_security_findings(matches, type, field_name)
+    end
+  end
+
+  defp build_security_findings(matches, type, field_name) do
+    Enum.map(matches, fn match ->
+      value = extract_match_value(match)
+
+      %{
+        field: field_name,
+        type: type,
+        # Truncate for security
+        value: String.slice(value, 0, 10) <> "...",
+        confidence: 0.8,
+        line: 1
+      }
+    end)
+  end
+
+  defp extract_match_value(match) do
+    case match do
+      [val] -> val
+      val when is_binary(val) -> val
+      _ -> "unknown"
+    end
   end
 end
