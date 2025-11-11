@@ -138,9 +138,10 @@ defmodule ExUtcp.Client.ToolCallValidationTest do
       result =
         with {:ok, _} <- {:error, "First error"},
              # This should never execute
-             _steps = [:should_not_reach | steps],
-             {:ok, :value},
+             {:ok, _} <- {:ok, :value},
              {:ok, _} <- {:ok, :value} do
+          # This should never be reached
+          _steps = [:should_not_reach | steps]
           {:ok, "success"}
         end
 
