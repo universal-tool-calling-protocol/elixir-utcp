@@ -4,6 +4,7 @@ defmodule ExUtcp.Transports.Graphql.Testable do
   """
 
   use GenServer
+  use ExUtcp.Transports.Behaviour
 
   alias ExUtcp.Transports.Graphql.MockConnection
   alias ExUtcp.Transports.Graphql.Schema
@@ -42,6 +43,11 @@ defmodule ExUtcp.Transports.Graphql.Testable do
       genserver_module: Keyword.get(opts, :genserver_module, GenServer),
       connection_module: Keyword.get(opts, :connection_module, MockConnection)
     }
+  end
+
+  @impl GenServer
+  def init(opts) do
+    {:ok, new(opts)}
   end
 
   @doc """
@@ -258,8 +264,9 @@ defmodule ExUtcp.Transports.Graphql.Testable do
     # For testing, we'll simulate getting a connection using the injected mock
     # In a real implementation, this would use the connection pool
     case transport.connection_module do
+      nil -> {:error, "No connection module configured"}
       MockConnection -> {:ok, :mock_connection}
-      _ -> {:ok, :mock_connection}
+      _module -> {:ok, :mock_connection}
     end
   end
 

@@ -13,9 +13,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
 
   alias ExUtcp.Transports.WebRTC.Signaling
   alias ExWebRTC.DataChannel
-  alias ExWebRTC.ICECandidate
   alias ExWebRTC.PeerConnection
-  alias ExWebRTC.SessionDescription
 
   require Logger
 
@@ -307,10 +305,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
 
   # Private helper functions
 
-  defp handle_data_channel_message(
-         %{"id" => call_id, "type" => "response", "result" => result},
-         state
-       ) do
+  defp handle_data_channel_message(%{"id" => call_id, "type" => "response", "result" => result}, state) do
     # Handle tool call response
     case Map.get(state.pending_calls, call_id) do
       nil ->

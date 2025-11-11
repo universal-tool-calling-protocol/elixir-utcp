@@ -127,8 +127,7 @@ defmodule ExUtcp.Auth do
     if Enum.all?(required_fields, &valid_field?/1) do
       :ok
     else
-      {:error,
-       "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
+      {:error, "Client ID, client secret, token URL, and scope are required for OAuth2 authentication"}
     end
   end
 

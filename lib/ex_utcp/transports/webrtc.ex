@@ -14,7 +14,7 @@ defmodule ExUtcp.Transports.WebRTC do
   use GenServer
   use ExUtcp.Transports.Behaviour
 
-  alias ExUtcp.Transports.WebRTC.{Connection, Signaling}
+  alias ExUtcp.Transports.WebRTC.Connection
 
   require Logger
 
@@ -215,14 +215,21 @@ defmodule ExUtcp.Transports.WebRTC do
   defp discover_tools(provider) do
     # For WebRTC, tools would be discovered through the signaling server
     # or provided in the provider configuration
-    tools =
-      case Map.get(provider, :tools) do
-        nil -> []
-        tools when is_list(tools) -> tools
-        _ -> []
-      end
+    case Map.get(provider, :tools) do
+      nil ->
+        {:ok, []}
 
-    {:ok, tools}
+      tools when is_list(tools) ->
+        # Validate tools are properly formatted
+        if Enum.all?(tools, &is_map/1) do
+          {:ok, tools}
+        else
+          {:error, "Invalid tool format: tools must be maps"}
+        end
+
+      _ ->
+        {:error, "Invalid tools configuration: must be a list"}
+    end
   end
 
   defp get_or_create_connection(provider, state) do

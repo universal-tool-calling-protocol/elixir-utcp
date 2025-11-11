@@ -3,6 +3,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
 
   import Mox
 
+  alias ExUtcp.Transports.WebSocket.ConnectionMock
   alias ExUtcp.Transports.WebSocket.Testable
 
   @moduletag :unit
@@ -14,7 +15,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
   describe "WebSocket Transport with Mocks" do
     setup do
       # Create testable transport with mocked dependencies
-      transport = Testable.new(connection_module: ExUtcp.Transports.WebSocket.ConnectionMock)
+      transport = Testable.new(connection_module: ConnectionMock)
 
       {:ok, transport: transport}
     end
@@ -109,10 +110,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return tool call result
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
-                                                                        _tool,
-                                                                        _args,
-                                                                        _opts ->
+      expect(ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
         {:ok, %{"result" => "success"}}
       end)
 
@@ -130,10 +128,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn,
-                                                                           _tool,
-                                                                           _args,
-                                                                           _opts ->
+      expect(ConnectionMock, :call_tool, 4, fn _conn, _tool, _args, _opts ->
         {:error, "Tool call failed"}
       end)
 
@@ -150,10 +145,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return streaming result
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool_stream, fn _conn,
-                                                                               _tool,
-                                                                               _args,
-                                                                               _opts ->
+      expect(ConnectionMock, :call_tool_stream, fn _conn, _tool, _args, _opts ->
         {:ok, Stream.map([%{"chunk" => "data"}], & &1)}
       end)
 
@@ -171,10 +163,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, 4, fn _conn,
-                                                                           _tool,
-                                                                           _args,
-                                                                           _opts ->
+      expect(ConnectionMock, :call_tool, 4, fn _conn, _tool, _args, _opts ->
         {:error, "Connection lost"}
       end)
 
@@ -191,10 +180,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to call tools
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
-                                                                        _tool,
-                                                                        _args,
-                                                                        _opts ->
+      expect(ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
         {:ok, %{"type" => "response", "data" => "test"}}
       end)
 
@@ -212,10 +198,7 @@ defmodule ExUtcp.Transports.WebSocketMoxTest do
       }
 
       # Mock the connection to return messages
-      expect(ExUtcp.Transports.WebSocket.ConnectionMock, :call_tool, fn _conn,
-                                                                        _tool,
-                                                                        _args,
-                                                                        _opts ->
+      expect(ConnectionMock, :call_tool, fn _conn, _tool, _args, _opts ->
         {:ok, %{"type" => "response", "data" => "test"}}
       end)
 

@@ -10,6 +10,7 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
   use ExUtcp.Transports.TcpUdp.PoolBehaviour
 
   alias ExUtcp.Transports.TcpUdp.Connection
+  alias ExUtcp.Transports.TcpUdp.PoolBehaviour
 
   defstruct [
     :connections,
@@ -17,27 +18,27 @@ defmodule ExUtcp.Transports.TcpUdp.Pool do
     :connection_timeout
   ]
 
-  @impl ExUtcp.Transports.TcpUdp.PoolBehaviour
+  @impl PoolBehaviour
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts)
   end
 
-  @impl ExUtcp.Transports.TcpUdp.PoolBehaviour
+  @impl PoolBehaviour
   def get_connection(pool_pid, provider) do
     GenServer.call(pool_pid, {:get_connection, provider})
   end
 
-  @impl ExUtcp.Transports.TcpUdp.PoolBehaviour
+  @impl PoolBehaviour
   def close_connection(pool_pid, conn_pid) do
     GenServer.call(pool_pid, {:close_connection, conn_pid})
   end
 
-  @impl ExUtcp.Transports.TcpUdp.PoolBehaviour
+  @impl PoolBehaviour
   def close_all_connections(pool_pid) do
     GenServer.call(pool_pid, :close_all_connections)
   end
 
-  @impl ExUtcp.Transports.TcpUdp.PoolBehaviour
+  @impl PoolBehaviour
   def stats(pool_pid) do
     GenServer.call(pool_pid, :stats)
   end

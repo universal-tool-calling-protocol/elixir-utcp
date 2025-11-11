@@ -175,8 +175,7 @@ defmodule ExUtcp.Transports.Mcp.Message do
       :ok ->
         {code, message_text, data} = extract_error(message)
 
-        {:error,
-         "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
+        {:error, "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
 
       {:error, reason} ->
         {:error, reason}

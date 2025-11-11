@@ -5,24 +5,26 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
 
   alias ExUtcp.Providers
   alias ExUtcp.Transports.TcpUdp
+  alias ExUtcp.Transports.TcpUdp.ConnectionMock
+  alias ExUtcp.Transports.TcpUdp.PoolMock
   alias ExUtcp.Transports.TcpUdp.Testable
 
   # Define mocks
-  defmock(ExUtcp.Transports.TcpUdp.ConnectionMock,
+  defmock(ConnectionMock,
     for: ExUtcp.Transports.TcpUdp.ConnectionBehaviour
   )
 
-  defmock(ExUtcp.Transports.TcpUdp.PoolMock, for: ExUtcp.Transports.TcpUdp.PoolBehaviour)
+  defmock(PoolMock, for: ExUtcp.Transports.TcpUdp.PoolBehaviour)
 
   setup do
     # Set up mocks
-    Testable.set_mocks(ExUtcp.Transports.TcpUdp.ConnectionMock, ExUtcp.Transports.TcpUdp.PoolMock)
+    Testable.set_mocks(ConnectionMock, PoolMock)
 
     # Set application environment to use mocks
     Application.put_env(
       :ex_utcp,
       :tcp_udp_connection_behaviour,
-      ExUtcp.Transports.TcpUdp.ConnectionMock
+      ConnectionMock
     )
 
     # Generate a unique name for each test
@@ -32,8 +34,8 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
     {:ok, transport_pid} = TcpUdp.start_link(name: test_name)
 
     # Allow the transport GenServer to use the mocks
-    Mox.allow(ExUtcp.Transports.TcpUdp.ConnectionMock, self(), transport_pid)
-    Mox.allow(ExUtcp.Transports.TcpUdp.PoolMock, self(), transport_pid)
+    Mox.allow(ConnectionMock, self(), transport_pid)
+    Mox.allow(PoolMock, self(), transport_pid)
 
     on_exit(fn ->
       Testable.clear_mocks()
@@ -89,16 +91,13 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
 
       # Allow the GenServer process to use the mock
       genserver_pid = GenServer.whereis(transport_name)
-      Mox.allow(ExUtcp.Transports.TcpUdp.ConnectionMock, self(), genserver_pid)
+      Mox.allow(ConnectionMock, self(), genserver_pid)
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :start_link, 1, fn _provider ->
+      expect(ConnectionMock, :start_link, 1, fn _provider ->
         {:ok, conn_pid}
       end)
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
-                                                                     "test_tool",
-                                                                     %{"message" => "hello"},
-                                                                     30_000 ->
+      expect(ConnectionMock, :call_tool, fn ^conn_pid, "test_tool", %{"message" => "hello"}, 30_000 ->
         {:ok, %{"response" => "Hello from TCP server!"}}
       end)
 
@@ -125,14 +124,11 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       # Mock the connection to return an error
       conn_pid = self()
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :start_link, 1, fn _provider ->
+      expect(ConnectionMock, :start_link, 1, fn _provider ->
         {:ok, conn_pid}
       end)
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
-                                                                     "test_tool",
-                                                                     %{"message" => "hello"},
-                                                                     30_000 ->
+      expect(ConnectionMock, :call_tool, fn ^conn_pid, "test_tool", %{"message" => "hello"}, 30_000 ->
         {:error, "Connection timeout"}
       end)
 
@@ -159,7 +155,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       # Mock the connection to return a stream
       conn_pid = self()
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :start_link, 1, fn _provider ->
+      expect(ConnectionMock, :start_link, 1, fn _provider ->
         {:ok, conn_pid}
       end)
 
@@ -174,12 +170,12 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
           %{type: :stream, data: data}
         end)
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool_stream, fn ^conn_pid,
-                                                                            "test_tool",
-                                                                            %{
-                                                                              "message" => "hello"
-                                                                            },
-                                                                            30_000 ->
+      expect(ConnectionMock, :call_tool_stream, fn ^conn_pid,
+                                                   "test_tool",
+                                                   %{
+                                                     "message" => "hello"
+                                                   },
+                                                   30_000 ->
         {:ok, stream}
       end)
 
@@ -207,7 +203,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       {:ok, []} = GenServer.call(transport_name, {:register_tool_provider, provider})
 
       # Mock the connection to return an error
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :start_link, 1, fn _provider ->
+      expect(ConnectionMock, :start_link, 1, fn _provider ->
         {:error, "Connection failed"}
       end)
 
@@ -234,7 +230,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       # Mock the connection to fail twice then succeed
       conn_pid = self()
 
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :start_link, fn _provider ->
+      expect(ConnectionMock, :start_link, fn _provider ->
         {:error, "Temporary failure"}
       end)
       |> expect(:start_link, fn _provider ->
@@ -245,10 +241,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       end)
 
       # Mock the connection to return a successful response
-      expect(ExUtcp.Transports.TcpUdp.ConnectionMock, :call_tool, fn ^conn_pid,
-                                                                     "test_tool",
-                                                                     %{"message" => "hello"},
-                                                                     30_000 ->
+      expect(ConnectionMock, :call_tool, fn ^conn_pid, "test_tool", %{"message" => "hello"}, 30_000 ->
         {:ok, %{"response" => "Hello from TCP server!"}}
       end)
 
@@ -278,7 +271,7 @@ defmodule ExUtcp.Transports.TcpUdpMockTest do
       # Mock pool close all connections
       pool_pid = self()
 
-      expect(ExUtcp.Transports.TcpUdp.PoolMock, :close_all_connections, fn ^pool_pid ->
+      expect(PoolMock, :close_all_connections, fn ^pool_pid ->
         :ok
       end)
 

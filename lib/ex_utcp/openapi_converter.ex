@@ -102,12 +102,40 @@ defmodule ExUtcp.OpenApiConverter do
   """
   @spec convert_from_file(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def convert_from_file(file_path, opts \\ []) do
-    with {:ok, content} <- File.read(file_path),
-         {:ok, spec} <- parse_spec_content(content, content_type_from_path(file_path)) do
+    with {:ok, validated_path} <- validate_openapi_file_path(file_path),
+         {:ok, content} <- File.read(validated_path),
+         {:ok, spec} <- parse_spec_content(content, content_type_from_path(validated_path)) do
       convert(spec, opts)
     else
+      {:error, :invalid_path} -> {:error, "Invalid file path"}
       {:error, :enoent} -> {:error, "File not found: #{file_path}"}
       {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
+    end
+  end
+
+  defp validate_openapi_file_path(file_path) do
+    # Resolve to absolute path and check for directory traversal
+    abs_path = Path.expand(file_path)
+
+    # Check if path contains directory traversal patterns
+    cond do
+      String.contains?(file_path, ["../", "..\\"]) ->
+        {:error, :invalid_path}
+
+      # Ensure the path doesn't escape the current working directory
+      String.contains?(abs_path, "..") ->
+        {:error, :invalid_path}
+
+      # Validate file extension
+      not String.ends_with?(abs_path, [".json", ".yaml", ".yml"]) ->
+        {:error, :invalid_file_type}
+
+      # Check if file exists and is readable
+      not File.exists?(abs_path) ->
+        {:error, :file_not_found}
+
+      true ->
+        {:ok, abs_path}
     end
   end
 

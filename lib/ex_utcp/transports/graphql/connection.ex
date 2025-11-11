@@ -265,9 +265,7 @@ defmodule ExUtcp.Transports.Graphql.Connection do
         {:ok, new_state}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error(
-          "Failed to connect to GraphQL endpoint #{url}: HTTP #{status} - #{inspect(body)}"
-        )
+        Logger.error("Failed to connect to GraphQL endpoint #{url}: HTTP #{status} - #{inspect(body)}")
 
         {:error, "HTTP #{status}: #{inspect(body)}"}
 

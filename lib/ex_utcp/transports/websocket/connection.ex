@@ -10,6 +10,8 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
 
   use WebSockex
 
+  alias ExUtcp.Transports.WebSocket.ConnectionBehaviour
+
   require Logger
 
   defstruct [
@@ -24,7 +26,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Starts a new WebSocket connection.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec start_link(map()) :: {:ok, pid()} | {:error, term()}
   def start_link(provider) do
     start_link(provider.url, provider, [])
@@ -47,7 +49,6 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Sends a message through the WebSocket connection.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
   @spec send_message(pid(), String.t()) :: :ok | {:error, term()}
   def send_message(pid, message) do
     WebSockex.send_frame(pid, {:text, message})
@@ -56,7 +57,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Closes the WebSocket connection.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec close(pid()) :: :ok
   def close(pid) do
     GenServer.stop(pid)
@@ -175,7 +176,6 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Gets the next message from the message queue.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
   @spec get_next_message(pid(), timeout()) :: {:ok, String.t()} | {:error, :timeout}
   def get_next_message(pid, timeout \\ 5_000) do
     case GenServer.call(pid, :get_next_message, timeout) do
@@ -188,7 +188,6 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Gets all messages from the message queue.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
   @spec get_all_messages(pid()) :: [String.t()]
   def get_all_messages(pid) do
     GenServer.call(pid, :get_all_messages)
@@ -197,7 +196,6 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Clears the message queue.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
   @spec clear_messages(pid()) :: :ok
   def clear_messages(pid) do
     GenServer.call(pid, :clear_messages)
@@ -206,7 +204,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Calls a tool through the WebSocket connection.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec call_tool(pid(), String.t(), map(), keyword()) :: {:ok, map()} | {:error, term()}
   def call_tool(pid, tool_name, args, opts \\ []) do
     message = %{
@@ -230,7 +228,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Calls a tool stream through the WebSocket connection.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec call_tool_stream(pid(), String.t(), map(), keyword()) ::
           {:ok, Enumerable.t()} | {:error, term()}
   def call_tool_stream(pid, tool_name, args, opts \\ []) do
@@ -261,7 +259,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Gets the last used timestamp.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec get_last_used(pid()) :: integer()
   def get_last_used(pid) do
     GenServer.call(pid, :get_last_used)
@@ -270,7 +268,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
   @doc """
   Updates the last used timestamp.
   """
-  @impl ExUtcp.Transports.WebSocket.ConnectionBehaviour
+  @impl ConnectionBehaviour
   @spec update_last_used(pid()) :: :ok
   def update_last_used(pid) do
     GenServer.cast(pid, :update_last_used)
@@ -309,6 +307,7 @@ defmodule ExUtcp.Transports.WebSocket.Connection do
     {:reply, {:error, :not_implemented}, state}
   end
 
+  @impl true
   def handle_cast(:update_last_used, state) do
     new_state = %{state | last_ping: System.monotonic_time(:millisecond)}
     {:noreply, new_state}

@@ -224,6 +224,111 @@ defmodule ExUtcp.Client do
     {:reply, stats, state}
   end
 
+  @impl GenServer
+  def handle_call(:get_monitoring_metrics, _from, state) do
+    metrics = ExUtcp.Monitoring.get_metrics()
+    {:reply, metrics, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_health_status, _from, state) do
+    health_status = ExUtcp.Monitoring.get_health_status()
+    {:reply, health_status, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_performance_summary, _from, state) do
+    performance_summary = Performance.get_performance_summary()
+    {:reply, performance_summary, state}
+  end
+
+  @impl GenServer
+  def handle_call({:convert_openapi, spec, opts}, _from, state) do
+    case convert_openapi_impl(spec, opts) do
+      {:ok, tools} ->
+        # Register all tools
+        {results, new_repo} =
+          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
+            case Repository.add_tool(repo, tool) do
+              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
+              {:error, reason} -> {[{:error, reason} | acc_results], repo}
+            end
+          end)
+
+        # Check if any registration failed
+        case Enum.find(results, &match?({:error, _}, &1)) do
+          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
+          error -> {:reply, error, state}
+        end
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:convert_multiple_openapi, specs, opts}, _from, state) do
+    case convert_multiple_openapi_impl(specs, opts) do
+      {:ok, tools} ->
+        # Register all tools
+        {results, new_repo} =
+          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
+            case Repository.add_tool(repo, tool) do
+              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
+              {:error, reason} -> {[{:error, reason} | acc_results], repo}
+            end
+          end)
+
+        # Check if any registration failed
+        case Enum.find(results, &match?({:error, _}, &1)) do
+          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
+          error -> {:reply, error, state}
+        end
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:validate_openapi, spec}, _from, state) do
+    result = OpenApiConverter.validate(spec)
+    {:reply, result, state}
+  end
+
+  @impl GenServer
+  def handle_call({:search_providers, query, opts}, _from, state) do
+    # Create search engine from current repository state
+    search_engine = create_search_engine_from_state(state)
+
+    results = ExUtcp.Search.search_providers(search_engine, query, opts)
+    {:reply, results, state}
+  end
+
+  @impl GenServer
+  def handle_call({:get_search_suggestions, partial_query, opts}, _from, state) do
+    # Create search engine from current repository state
+    search_engine = create_search_engine_from_state(state)
+
+    suggestions = ExUtcp.Search.get_suggestions(search_engine, partial_query, opts)
+    {:reply, suggestions, state}
+  end
+
+  @impl GenServer
+  def handle_call({:find_similar_tools, tool_name, opts}, _from, state) do
+    case Repository.get_tool(state.repository, tool_name) do
+      {:ok, tool} ->
+        # Create search engine from current repository state
+        search_engine = create_search_engine_from_state(state)
+
+        similar_tools = ExUtcp.Search.suggest_similar_tools(search_engine, tool, opts)
+        {:reply, similar_tools, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
   # Private functions
 
   defp default_transports do
@@ -247,15 +352,37 @@ defmodule ExUtcp.Client do
   end
 
   defp load_providers_from_file(state, file_path) do
-    case File.read(file_path) do
-      {:ok, content} ->
-        case Jason.decode(content) do
-          {:ok, data} -> parse_and_register_providers(state, data)
-          {:error, reason} -> {:error, "Failed to parse JSON: #{reason}"}
-        end
+    # Validate file path to prevent directory traversal
+    with {:ok, validated_path} <- validate_file_path(file_path),
+         {:ok, content} <- File.read(validated_path),
+         {:ok, data} <- Jason.decode(content) do
+      parse_and_register_providers(state, data)
+    else
+      {:error, :invalid_path} -> {:error, "Invalid file path"}
+      {:error, %Jason.DecodeError{} = reason} -> {:error, "Failed to parse JSON: #{inspect(reason)}"}
+      {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
+    end
+  end
 
-      {:error, reason} ->
-        {:error, "Failed to read file: #{reason}"}
+  defp validate_file_path(file_path) do
+    # Resolve to absolute path and check for directory traversal
+    abs_path = Path.expand(file_path)
+
+    # Check if path contains directory traversal patterns
+    cond do
+      String.contains?(file_path, ["../", "..\\"]) ->
+        {:error, :invalid_path}
+
+      # Ensure the path doesn't escape the current working directory
+      String.contains?(abs_path, "..") ->
+        {:error, :invalid_path}
+
+      # Check if file exists and is readable
+      not File.exists?(abs_path) ->
+        {:error, :file_not_found}
+
+      true ->
+        {:ok, abs_path}
     end
   end
 
@@ -459,7 +586,7 @@ defmodule ExUtcp.Client do
 
   defp call_tool_impl(state, tool_name, args) do
     with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
-         provider_name <- Tools.extract_provider_name(tool_name),
+         provider_name = Tools.extract_provider_name(tool_name),
          {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
          {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
       call_name = extract_call_name(provider.type, tool_name)
@@ -499,7 +626,7 @@ defmodule ExUtcp.Client do
 
   defp call_tool_stream_impl(state, tool_name, args) do
     with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
-         provider_name <- Tools.extract_provider_name(tool_name),
+         provider_name = Tools.extract_provider_name(tool_name),
          {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
          {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
       call_name = extract_call_name(provider.type, tool_name)
@@ -661,110 +788,6 @@ defmodule ExUtcp.Client do
   @spec get_performance_summary(GenServer.server()) :: map()
   def get_performance_summary(client) do
     GenServer.call(client, :get_performance_summary)
-  end
-
-  # GenServer callbacks
-
-  def handle_call({:convert_openapi, spec, opts}, _from, state) do
-    case convert_openapi_impl(spec, opts) do
-      {:ok, tools} ->
-        # Register all tools
-        {results, new_repo} =
-          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
-            case Repository.add_tool(repo, tool) do
-              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
-              {:error, reason} -> {[{:error, reason} | acc_results], repo}
-            end
-          end)
-
-        # Check if any registration failed
-        case Enum.find(results, &match?({:error, _}, &1)) do
-          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
-          error -> {:reply, error, state}
-        end
-
-      error ->
-        {:reply, error, state}
-    end
-  end
-
-  def handle_call({:convert_multiple_openapi, specs, opts}, _from, state) do
-    case convert_multiple_openapi_impl(specs, opts) do
-      {:ok, tools} ->
-        # Register all tools
-        {results, new_repo} =
-          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
-            case Repository.add_tool(repo, tool) do
-              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
-              {:error, reason} -> {[{:error, reason} | acc_results], repo}
-            end
-          end)
-
-        # Check if any registration failed
-        case Enum.find(results, &match?({:error, _}, &1)) do
-          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
-          error -> {:reply, error, state}
-        end
-
-      error ->
-        {:reply, error, state}
-    end
-  end
-
-  def handle_call({:validate_openapi, spec}, _from, state) do
-    result = OpenApiConverter.validate(spec)
-    {:reply, result, state}
-  end
-
-  @impl GenServer
-  def handle_call({:search_providers, query, opts}, _from, state) do
-    # Create search engine from current repository state
-    search_engine = create_search_engine_from_state(state)
-
-    results = ExUtcp.Search.search_providers(search_engine, query, opts)
-    {:reply, results, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_search_suggestions, partial_query, opts}, _from, state) do
-    # Create search engine from current repository state
-    search_engine = create_search_engine_from_state(state)
-
-    suggestions = ExUtcp.Search.get_suggestions(search_engine, partial_query, opts)
-    {:reply, suggestions, state}
-  end
-
-  @impl GenServer
-  def handle_call({:find_similar_tools, tool_name, opts}, _from, state) do
-    case Repository.get_tool(state.repository, tool_name) do
-      {:ok, tool} ->
-        # Create search engine from current repository state
-        search_engine = create_search_engine_from_state(state)
-
-        similar_tools = ExUtcp.Search.suggest_similar_tools(search_engine, tool, opts)
-        {:reply, similar_tools, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call(:get_monitoring_metrics, _from, state) do
-    metrics = ExUtcp.Monitoring.get_metrics()
-    {:reply, metrics, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_health_status, _from, state) do
-    health_status = ExUtcp.Monitoring.get_health_status()
-    {:reply, health_status, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_performance_summary, _from, state) do
-    performance_summary = Performance.get_performance_summary()
-    {:reply, performance_summary, state}
   end
 
   # Private functions

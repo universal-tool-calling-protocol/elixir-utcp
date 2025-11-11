@@ -175,7 +175,7 @@ defmodule ExUtcp.Transports.TcpUdpIntegrationTest do
 
     test "handles max retries exceeded" do
       # Create a transport with very low retry settings
-      {:ok, pid} = TcpUdp.start_link()
+      {:ok, _pid} = TcpUdp.start_link()
 
       provider =
         Providers.new_tcp_provider(
