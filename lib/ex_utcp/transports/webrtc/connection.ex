@@ -12,7 +12,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   use GenServer
 
   alias ExUtcp.Transports.WebRTC.Signaling
-  alias ExWebRTC.{PeerConnection, DataChannel, ICECandidate, SessionDescription}
+  alias ExWebRTC.PeerConnection
 
   require Logger
 
@@ -130,7 +130,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
       }
 
       # Send message over data channel
-      case send_data_channel_message(state.data_channel, message) do
+      case send_data_channel_message(state.peer_connection, state.data_channel, message) do
         :ok ->
           # Store pending call
           new_pending_calls = Map.put(state.pending_calls, call_id, from)
@@ -155,7 +155,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
   def handle_call({:call_tool_stream, tool_name, args}, _from, state) do
     if state.connection_state == :connected and state.data_channel != nil do
       # For streaming, we'll create a stream that polls for chunks
-      stream = create_polling_stream(state.data_channel, tool_name, args)
+      stream = create_polling_stream(state.peer_connection, state.data_channel, tool_name, args)
       {:reply, {:ok, stream}, state}
     else
       {:reply, {:error, "Connection not ready. State: #{state.connection_state}"}, state}
@@ -304,10 +304,7 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
 
   # Private helper functions
 
-  defp handle_data_channel_message(
-         %{"id" => call_id, "type" => "response", "result" => result},
-         state
-       ) do
+  defp handle_data_channel_message(%{"id" => call_id, "type" => "response", "result" => result}, state) do
     # Handle tool call response
     case Map.get(state.pending_calls, call_id) do
       nil ->
@@ -340,17 +337,18 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
     {:noreply, state}
   end
 
-  defp send_data_channel_message(data_channel, message) do
+  defp send_data_channel_message(peer_connection, data_channel, message) do
     case Jason.encode(message) do
       {:ok, json} ->
-        DataChannel.send_data(data_channel, json)
+        # Use PeerConnection.send_data/4 with the data channel reference
+        PeerConnection.send_data(peer_connection, data_channel, json, :string)
 
       {:error, reason} ->
         {:error, "Failed to encode message: #{inspect(reason)}"}
     end
   end
 
-  defp create_polling_stream(data_channel, tool_name, args) do
+  defp create_polling_stream(peer_connection, data_channel, tool_name, args) do
     # Create a stream that polls for streaming chunks
     # This is a simplified implementation
     Stream.resource(
@@ -363,21 +361,21 @@ defmodule ExUtcp.Transports.WebRTC.Connection do
           args: args
         }
 
-        send_data_channel_message(data_channel, message)
-        {data_channel, []}
+        send_data_channel_message(peer_connection, data_channel, message)
+        {peer_connection, data_channel, []}
       end,
-      fn {dc, buffer} ->
+      fn {pc, dc, buffer} ->
         # Poll for chunks (simplified - in real implementation would use message handlers)
         Process.sleep(10)
 
         # Check if we have buffered chunks
         if Enum.empty?(buffer) do
-          {:halt, {dc, buffer}}
+          {:halt, {pc, dc, buffer}}
         else
-          {[hd(buffer)], {dc, tl(buffer)}}
+          {[hd(buffer)], {pc, dc, tl(buffer)}}
         end
       end,
-      fn {_dc, _buffer} ->
+      fn {_pc, _dc, _buffer} ->
         # Cleanup
         :ok
       end

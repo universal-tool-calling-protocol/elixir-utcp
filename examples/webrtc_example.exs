@@ -205,3 +205,4 @@ For more information:
 GenServer.stop(client)
 
 IO.puts "Example completed!"
+

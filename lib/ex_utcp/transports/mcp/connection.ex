@@ -197,16 +197,12 @@ defmodule ExUtcp.Transports.Mcp.Connection do
         {:ok, new_state}
 
       {:error, reason} ->
-        Logger.error(
-          "Failed to connect to MCP endpoint #{state.provider.url}: #{inspect(reason)}"
-        )
+        Logger.error("Failed to connect to MCP endpoint #{state.provider.url}: #{inspect(reason)}")
 
         {:error, reason}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error(
-          "Failed to connect to MCP endpoint #{state.provider.url} with HTTP #{status}: #{inspect(body)}"
-        )
+        Logger.error("Failed to connect to MCP endpoint #{state.provider.url} with HTTP #{status}: #{inspect(body)}")
 
         {:error, "HTTP #{status}: #{inspect(body)}"}
     end

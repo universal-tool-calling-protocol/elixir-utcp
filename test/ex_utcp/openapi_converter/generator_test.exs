@@ -1,8 +1,8 @@
 defmodule ExUtcp.OpenApiConverter.GeneratorTest do
   use ExUnit.Case, async: true
 
+  alias ExUtcp.OpenApiConverter.Generator
   alias ExUtcp.OpenApiConverter.Types, as: T
-  alias ExUtcp.OpenApiConverter.{Generator, Types}
 
   describe "generate_tools/2" do
     test "generates tools from parsed spec" do

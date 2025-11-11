@@ -1,8 +1,8 @@
 defmodule ExUtcp.OpenApiConverter.AuthMapperTest do
   use ExUnit.Case, async: true
 
+  alias ExUtcp.OpenApiConverter.AuthMapper
   alias ExUtcp.OpenApiConverter.Types, as: T
-  alias ExUtcp.OpenApiConverter.{AuthMapper, Types}
 
   describe "map_security_scheme/1" do
     test "maps API key security scheme" do

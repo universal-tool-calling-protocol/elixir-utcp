@@ -11,7 +11,12 @@ defmodule ExUtcp.Search do
   - Transport-based filtering
   """
 
-  alias ExUtcp.Search.{Engine, Fuzzy, Semantic, Filters, Ranking, Security}
+  alias ExUtcp.Search.Engine
+  alias ExUtcp.Search.Filters
+  alias ExUtcp.Search.Fuzzy
+  alias ExUtcp.Search.Ranking
+  alias ExUtcp.Search.Security
+  alias ExUtcp.Search.Semantic
   alias ExUtcp.Types
 
   @type search_options :: %{

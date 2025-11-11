@@ -116,32 +116,32 @@ defmodule ExUtcp.Transports.Mcp.Message do
   @doc """
   Checks if a message is a notification.
   """
-  @spec is_notification?(map()) :: boolean()
-  def is_notification?(%{"method" => _method, "id" => nil}), do: true
-  def is_notification?(%{"method" => _method}), do: false
-  def is_notification?(_), do: false
+  @spec notification?(map()) :: boolean()
+  def notification?(%{"method" => _method, "id" => nil}), do: true
+  def notification?(%{"method" => _method}), do: false
+  def notification?(_), do: false
 
   @doc """
   Checks if a message is a request.
   """
-  @spec is_request?(map()) :: boolean()
-  def is_request?(%{"method" => _method, "id" => id}) when not is_nil(id), do: true
-  def is_request?(_), do: false
+  @spec request?(map()) :: boolean()
+  def request?(%{"method" => _method, "id" => id}) when not is_nil(id), do: true
+  def request?(_), do: false
 
   @doc """
   Checks if a message is a response.
   """
-  @spec is_response?(map()) :: boolean()
-  def is_response?(%{"result" => _result}), do: true
-  def is_response?(%{"error" => _error}), do: true
-  def is_response?(_), do: false
+  @spec response?(map()) :: boolean()
+  def response?(%{"result" => _result}), do: true
+  def response?(%{"error" => _error}), do: true
+  def response?(_), do: false
 
   @doc """
   Checks if a message is an error response.
   """
-  @spec is_error?(map()) :: boolean()
-  def is_error?(%{"error" => _error}), do: true
-  def is_error?(_), do: false
+  @spec error?(map()) :: boolean()
+  def error?(%{"error" => _error}), do: true
+  def error?(_), do: false
 
   @doc """
   Extracts error information from an error response.
@@ -175,8 +175,7 @@ defmodule ExUtcp.Transports.Mcp.Message do
       :ok ->
         {code, message_text, data} = extract_error(message)
 
-        {:error,
-         "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
+        {:error, "JSON-RPC Error #{code}: #{message_text}#{if data, do: " (#{inspect(data)})", else: ""}"}
 
       {:error, reason} ->
         {:error, reason}

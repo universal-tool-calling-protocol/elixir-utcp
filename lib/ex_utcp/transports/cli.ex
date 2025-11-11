@@ -81,19 +81,26 @@ defmodule ExUtcp.Transports.Cli do
     command_parts = String.split(provider.command_name, " ", trim: true)
     [cmd_path | cmd_args] = command_parts
 
-    env = prepare_environment(provider)
-    working_dir = provider.working_dir
+    # Validate command path to prevent command injection
+    case validate_command_path(cmd_path) do
+      {:ok, validated_cmd} ->
+        env = prepare_environment(provider)
+        working_dir = provider.working_dir
 
-    cmd_opts = [
-      env: env,
-      stderr_to_stdout: true
-    ]
+        cmd_opts = [
+          env: env,
+          stderr_to_stdout: true
+        ]
 
-    cmd_opts = if working_dir, do: [{:cd, working_dir} | cmd_opts], else: cmd_opts
+        cmd_opts = if working_dir, do: [{:cd, working_dir} | cmd_opts], else: cmd_opts
 
-    case System.cmd(cmd_path, cmd_args, cmd_opts) do
-      {output, 0} -> {:ok, output}
-      {output, exit_code} -> {:error, "Command failed with exit code #{exit_code}: #{output}"}
+        case System.cmd(validated_cmd, cmd_args, cmd_opts) do
+          {output, 0} -> {:ok, output}
+          {output, exit_code} -> {:error, "Command failed with exit code #{exit_code}: #{output}"}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -101,30 +108,65 @@ defmodule ExUtcp.Transports.Cli do
     command_parts = String.split(provider.command_name, " ", trim: true)
     [cmd_path | _] = command_parts
 
-    # Build command args: call <provider> <tool> [--flags]
-    cmd_args = ["call", provider.name, tool_name] ++ format_arguments(args)
+    # Validate command path to prevent command injection
+    case validate_command_path(cmd_path) do
+      {:ok, validated_cmd} ->
+        # Build command args: call <provider> <tool> [--flags]
+        cmd_args = ["call", provider.name, tool_name] ++ format_arguments(args)
 
-    env = prepare_environment(provider)
-    working_dir = provider.working_dir
+        env = prepare_environment(provider)
+        working_dir = provider.working_dir
 
-    # Prepare JSON payload for stdin
-    input =
-      case Jason.encode(args) do
-        {:ok, json} -> json
-        {:error, _} -> ""
-      end
+        # Prepare JSON payload for stdin
+        input =
+          case Jason.encode(args) do
+            {:ok, json} -> json
+            {:error, _} -> ""
+          end
 
-    cmd_opts = [
-      env: env,
-      input: input,
-      stderr_to_stdout: true
-    ]
+        cmd_opts = [
+          env: env,
+          input: input,
+          stderr_to_stdout: true
+        ]
 
-    cmd_opts = if working_dir, do: [{:cd, working_dir} | cmd_opts], else: cmd_opts
+        cmd_opts = if working_dir, do: [{:cd, working_dir} | cmd_opts], else: cmd_opts
 
-    case System.cmd(cmd_path, cmd_args, cmd_opts) do
-      {output, 0} -> {:ok, output}
-      {output, exit_code} -> {:error, "Command failed with exit code #{exit_code}: #{output}"}
+        case System.cmd(validated_cmd, cmd_args, cmd_opts) do
+          {output, 0} -> {:ok, output}
+          {output, exit_code} -> {:error, "Command failed with exit code #{exit_code}: #{output}"}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp validate_command_path(cmd_path) do
+    # Prevent command injection by validating the command path
+    cond do
+      # Check for shell metacharacters
+      Regex.match?(~r/[;&|`$()<>]/, cmd_path) ->
+        {:error, "Invalid command path: contains shell metacharacters"}
+
+      # Check for command chaining attempts
+      String.contains?(cmd_path, ["&&", "||", ";", "|"]) ->
+        {:error, "Invalid command path: contains command chaining"}
+
+      # Only allow alphanumeric, dash, underscore, dot, and forward slash
+      not Regex.match?(~r/^[a-zA-Z0-9_\-\.\/]+$/, cmd_path) ->
+        {:error, "Invalid command path: contains unsafe characters"}
+
+      # Prevent directory traversal in command path
+      String.contains?(cmd_path, "..") ->
+        {:error, "Invalid command path: contains directory traversal"}
+
+      # Command path should not be empty
+      String.trim(cmd_path) == "" ->
+        {:error, "Invalid command path: empty path"}
+
+      true ->
+        {:ok, cmd_path}
     end
   end
 
@@ -222,8 +264,9 @@ defmodule ExUtcp.Transports.Cli do
     tools =
       output
       |> String.split("\n")
-      |> Enum.filter(&String.starts_with?(&1, "{"))
-      |> Enum.filter(&String.ends_with?(&1, "}"))
+      |> Enum.filter(fn line ->
+        String.starts_with?(line, "{") && String.ends_with?(line, "}")
+      end)
       |> Enum.flat_map(fn line ->
         case Jason.decode(line) do
           {:ok, data} -> [normalize_tool(data, provider)]

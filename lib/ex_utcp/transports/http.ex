@@ -223,8 +223,7 @@ defmodule ExUtcp.Transports.Http do
 
     case make_streaming_request(provider, url_template, remaining_args) do
       {:ok, stream} ->
-        {:ok,
-         %{type: :stream, data: stream, metadata: %{"transport" => "http", "tool" => tool_name}}}
+        {:ok, %{type: :stream, data: stream, metadata: %{"transport" => "http", "tool" => tool_name}}}
 
       {:error, reason} ->
         {:error, reason}
@@ -283,12 +282,14 @@ defmodule ExUtcp.Transports.Http do
   end
 
   defp read_sse_chunk(state) do
-    case Req.Response.get_body(state.response, :stream) do
-      {:ok, data, new_response} ->
+    # For Req streaming, we receive messages via the process mailbox
+    # when using stream_to: self()
+    receive do
+      {:data, data} ->
         buffer = state.buffer <> data
         {chunks, remaining_buffer} = parse_sse_data(buffer)
 
-        new_state = %{state | response: new_response, buffer: remaining_buffer}
+        new_state = %{state | buffer: remaining_buffer}
 
         case chunks do
           [] ->
@@ -300,11 +301,14 @@ defmodule ExUtcp.Transports.Http do
             {:ok, processed_chunk, new_state}
         end
 
-      {:error, :end} ->
+      {:done, _ref} ->
         {:error, :end}
 
-      {:error, reason} ->
+      {:error, _ref, reason} ->
         {:error, reason}
+    after
+      5_000 ->
+        {:error, :timeout}
     end
   end
 

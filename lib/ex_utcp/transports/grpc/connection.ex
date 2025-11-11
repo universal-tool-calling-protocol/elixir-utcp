@@ -5,7 +5,10 @@ defmodule ExUtcp.Transports.Grpc.Connection do
 
   use GenServer
 
-  alias ExUtcp.Grpcpb.{UTCPService.Stub, Empty, ToolCallRequest}
+  alias ExUtcp.Grpcpb.Empty
+  alias ExUtcp.Grpcpb.ToolCallRequest
+  alias ExUtcp.Grpcpb.ToolCallResponse
+  alias ExUtcp.Grpcpb.UTCPService.Stub
 
   require Logger
 
@@ -247,7 +250,7 @@ defmodule ExUtcp.Transports.Grpc.Connection do
 
       :call_tool ->
         # Simulate tool call response
-        response = %ExUtcp.Grpcpb.ToolCallResponse{
+        response = %ToolCallResponse{
           result_json: Jason.encode!(%{"result" => "Mock gRPC response for #{request.tool}"})
         }
 
@@ -256,10 +259,10 @@ defmodule ExUtcp.Transports.Grpc.Connection do
       :call_tool_stream ->
         # Simulate tool stream response
         responses = [
-          %ExUtcp.Grpcpb.ToolCallResponse{
+          %ToolCallResponse{
             result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 1"})
           },
-          %ExUtcp.Grpcpb.ToolCallResponse{
+          %ToolCallResponse{
             result_json: Jason.encode!(%{"chunk" => "Mock gRPC stream chunk 2"})
           }
         ]
@@ -274,7 +277,7 @@ defmodule ExUtcp.Transports.Grpc.Connection do
 
   defp build_endpoint(provider) do
     host = Map.get(provider, :host, "localhost")
-    port = Map.get(provider, :port, 50051)
+    port = Map.get(provider, :port, 50_051)
     use_ssl = Map.get(provider, :use_ssl, false)
 
     protocol = if use_ssl, do: "https", else: "http"

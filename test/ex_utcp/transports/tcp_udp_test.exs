@@ -38,8 +38,8 @@ defmodule ExUtcp.Transports.TcpUdpTest do
     end
 
     test "creates new transport with options" do
-      transport = TcpUdp.new(connection_timeout: 60000)
-      assert transport.connection_timeout == 60000
+      transport = TcpUdp.new(connection_timeout: 60_000)
+      assert transport.connection_timeout == 60_000
       assert transport.retry_config.max_retries == 3
     end
   end

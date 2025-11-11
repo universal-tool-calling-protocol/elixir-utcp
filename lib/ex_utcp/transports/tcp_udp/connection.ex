@@ -9,6 +9,8 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
   use GenServer
   use ExUtcp.Transports.TcpUdp.ConnectionBehaviour
 
+  alias ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+
   defstruct [
     :socket,
     :provider,
@@ -19,32 +21,32 @@ defmodule ExUtcp.Transports.TcpUdp.Connection do
     :buffer
   ]
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def start_link(provider) do
     GenServer.start_link(__MODULE__, provider)
   end
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def call_tool(conn, tool_name, args, timeout) do
     GenServer.call(conn, {:call_tool, tool_name, args, timeout})
   end
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def call_tool_stream(conn, tool_name, args, timeout) do
     GenServer.call(conn, {:call_tool_stream, tool_name, args, timeout})
   end
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def close(conn) do
     GenServer.call(conn, :close)
   end
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def get_last_used(conn) do
     GenServer.call(conn, :get_last_used)
   end
 
-  @impl ExUtcp.Transports.TcpUdp.ConnectionBehaviour
+  @impl ConnectionBehaviour
   def update_last_used(conn) do
     GenServer.cast(conn, :update_last_used)
   end

@@ -3,6 +3,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
 
   import Mox
 
+  alias ExUtcp.Transports.Graphql.ConnectionMock
   alias ExUtcp.Transports.Graphql.Testable
 
   @moduletag :unit
@@ -16,7 +17,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       # Create testable transport with mocked dependencies
       transport =
         Testable.new(
-          connection_module: ExUtcp.Transports.Graphql.ConnectionMock,
+          connection_module: ConnectionMock,
           pool_module: ExUtcp.Transports.Graphql.PoolMock
         )
 
@@ -72,7 +73,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       }
 
       # Mock the connection to return successful tool discovery
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :introspect_schema, fn _conn, _opts ->
+      expect(ConnectionMock, :introspect_schema, fn _conn, _opts ->
         {:ok, %{"__schema" => %{"types" => []}}}
       end)
 
@@ -88,8 +89,9 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
         headers: %{}
       }
 
-      # Mock the connection to return an error during tool discovery (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :introspect_schema, 4, fn _conn, _opts ->
+      # Mock the connection to return an error during tool discovery
+      # (expect 4 calls due to retry logic: 1 initial + 3 retries)
+      expect(ConnectionMock, :introspect_schema, 4, fn _conn, _opts ->
         {:error, "Schema introspection failed"}
       end)
 
@@ -118,10 +120,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       }
 
       # Mock the connection to return a successful query result
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :query, fn _conn,
-                                                                  _query,
-                                                                  _variables,
-                                                                  _opts ->
+      expect(ConnectionMock, :query, fn _conn, _query, _variables, _opts ->
         {:ok, %{"data" => %{"test_tool" => %{"result" => "success"}}}}
       end)
 
@@ -140,10 +139,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
 
       # The Testable module returns mock_connection directly without using the pool
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :query, 4, fn _conn,
-                                                                     _query,
-                                                                     _vars,
-                                                                     _opts ->
+      expect(ConnectionMock, :query, 4, fn _conn, _query, _vars, _opts ->
         {:error, "Query failed"}
       end)
 
@@ -160,7 +156,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       }
 
       # Mock the connection to return query result
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :query, fn _conn, _query, _vars, _opts ->
+      expect(ConnectionMock, :query, fn _conn, _query, _vars, _opts ->
         {:ok, %{"data" => %{"create" => %{"id" => "123"}}}}
       end)
 
@@ -178,12 +174,8 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       }
 
       # Mock the connection to return a successful subscription result
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :subscription, fn _conn,
-                                                                         _query,
-                                                                         _variables,
-                                                                         _opts ->
-        {:ok,
-         [%{"data" => %{"subscribe_tool" => %{"data" => "test", "timestamp" => "2024-01-01"}}}]}
+      expect(ConnectionMock, :subscription, fn _conn, _query, _variables, _opts ->
+        {:ok, [%{"data" => %{"subscribe_tool" => %{"data" => "test", "timestamp" => "2024-01-01"}}}]}
       end)
 
       assert {:ok, result} = Testable.call_tool_stream(transport, "subscribe_tool", %{}, provider)
@@ -210,10 +202,7 @@ defmodule ExUtcp.Transports.GraphqlMoxTest do
       }
 
       # Mock the connection to return an error (expect 4 calls due to retry logic: 1 initial + 3 retries)
-      expect(ExUtcp.Transports.Graphql.ConnectionMock, :query, 4, fn _conn,
-                                                                     _query,
-                                                                     _variables,
-                                                                     _opts ->
+      expect(ConnectionMock, :query, 4, fn _conn, _query, _variables, _opts ->
         {:error, "Connection failed"}
       end)
 

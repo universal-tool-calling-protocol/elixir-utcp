@@ -9,6 +9,8 @@ defmodule ExUtcp.Monitoring.Performance do
 
   alias ExUtcp.Monitoring.Metrics
 
+  require Logger
+
   @enforce_keys [:config, :start_time]
   defstruct [:config, :start_time, :metrics]
 

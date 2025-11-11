@@ -9,7 +9,8 @@ defmodule ExUtcp.Transports.Mcp do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  alias ExUtcp.Transports.Mcp.{Pool, Connection}
+  alias ExUtcp.Transports.Mcp.Connection
+  alias ExUtcp.Transports.Mcp.Pool
 
   require Logger
 
@@ -241,9 +242,7 @@ defmodule ExUtcp.Transports.Mcp do
       fn ->
         case Pool.get_connection(provider) do
           {:ok, conn} ->
-            case Connection.call_tool_stream(conn, tool_name, args,
-                   timeout: state.connection_timeout
-                 ) do
+            case Connection.call_tool_stream(conn, tool_name, args, timeout: state.connection_timeout) do
               {:ok, stream} ->
                 # Enhance the stream with proper MCP streaming metadata
                 enhanced_stream = create_mcp_stream(stream, tool_name, provider)
@@ -334,9 +333,7 @@ defmodule ExUtcp.Transports.Mcp do
       fn ->
         case Pool.get_connection(provider) do
           {:ok, conn} ->
-            case Connection.send_notification(conn, method, params,
-                   timeout: state.connection_timeout
-                 ) do
+            case Connection.send_notification(conn, method, params, timeout: state.connection_timeout) do
               :ok -> :ok
               {:error, reason} -> {:error, "Failed to send notification: #{inspect(reason)}"}
             end

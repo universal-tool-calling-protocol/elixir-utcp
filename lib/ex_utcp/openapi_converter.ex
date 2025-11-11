@@ -33,7 +33,8 @@ defmodule ExUtcp.OpenApiConverter do
       })
   """
 
-  alias ExUtcp.OpenApiConverter.{Parser, Generator}
+  alias ExUtcp.OpenApiConverter.Generator
+  alias ExUtcp.OpenApiConverter.Parser
 
   @doc """
   Converts an OpenAPI specification to a UTCP manual.
@@ -101,12 +102,40 @@ defmodule ExUtcp.OpenApiConverter do
   """
   @spec convert_from_file(String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def convert_from_file(file_path, opts \\ []) do
-    with {:ok, content} <- File.read(file_path),
-         {:ok, spec} <- parse_spec_content(content, content_type_from_path(file_path)) do
+    with {:ok, validated_path} <- validate_openapi_file_path(file_path),
+         {:ok, content} <- File.read(validated_path),
+         {:ok, spec} <- parse_spec_content(content, content_type_from_path(validated_path)) do
       convert(spec, opts)
     else
+      {:error, :invalid_path} -> {:error, "Invalid file path"}
       {:error, :enoent} -> {:error, "File not found: #{file_path}"}
       {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
+    end
+  end
+
+  defp validate_openapi_file_path(file_path) do
+    # Resolve to absolute path and check for directory traversal
+    abs_path = Path.expand(file_path)
+
+    # Check if path contains directory traversal patterns
+    cond do
+      String.contains?(file_path, ["../", "..\\"]) ->
+        {:error, :invalid_path}
+
+      # Ensure the path doesn't escape the current working directory
+      String.contains?(abs_path, "..") ->
+        {:error, :invalid_path}
+
+      # Validate file extension
+      not String.ends_with?(abs_path, [".json", ".yaml", ".yml"]) ->
+        {:error, :invalid_file_type}
+
+      # Check if file exists and is readable
+      not File.exists?(abs_path) ->
+        {:error, :file_not_found}
+
+      true ->
+        {:ok, abs_path}
     end
   end
 
@@ -186,34 +215,44 @@ defmodule ExUtcp.OpenApiConverter do
   end
 
   defp parse_spec_content(content, content_type) do
-    # Ensure content is a string
-    content_str = if is_binary(content), do: content, else: inspect(content)
+    content_str = ensure_string(content)
 
     case content_type do
-      "application/json" ->
-        case Jason.decode(content_str) do
-          {:ok, spec} -> {:ok, spec}
-          {:error, reason} -> {:error, "Invalid JSON: #{inspect(reason)}"}
-        end
+      "application/json" -> parse_json(content_str)
+      "application/yaml" -> parse_yaml(content_str)
+      _ -> try_parse_both_formats(content_str)
+    end
+  end
 
-      "application/yaml" ->
-        case YamlElixir.read_from_string(content_str) do
-          {:ok, spec} -> {:ok, spec}
-          {:error, reason} -> {:error, "Invalid YAML: #{inspect(reason)}"}
-        end
+  defp ensure_string(content) do
+    if is_binary(content), do: content, else: inspect(content)
+  end
 
-      _ ->
-        # Try JSON first, then YAML
-        case Jason.decode(content_str) do
-          {:ok, spec} ->
-            {:ok, spec}
+  defp parse_json(content_str) do
+    case Jason.decode(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid JSON: #{inspect(reason)}"}
+    end
+  end
 
-          {:error, _} ->
-            case YamlElixir.read_from_string(content_str) do
-              {:ok, spec} -> {:ok, spec}
-              {:error, reason} -> {:error, "Invalid spec format: #{inspect(reason)}"}
-            end
-        end
+  defp parse_yaml(content_str) do
+    case YamlElixir.read_from_string(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid YAML: #{inspect(reason)}"}
+    end
+  end
+
+  defp try_parse_both_formats(content_str) do
+    case parse_json(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, _} -> parse_yaml_or_error(content_str)
+    end
+  end
+
+  defp parse_yaml_or_error(content_str) do
+    case YamlElixir.read_from_string(content_str) do
+      {:ok, spec} -> {:ok, spec}
+      {:error, reason} -> {:error, "Invalid spec format: #{inspect(reason)}"}
     end
   end
 

@@ -5,6 +5,13 @@ defmodule ExUtcp.StreamingUnitTest do
 
   use ExUnit.Case, async: true
 
+  alias ExUtcp.Transports.Cli
+  alias ExUtcp.Transports.Graphql
+  alias ExUtcp.Transports.Grpc
+  alias ExUtcp.Transports.Http
+  alias ExUtcp.Transports.Mcp
+  alias ExUtcp.Transports.WebSocket
+
   @moduletag :unit
 
   describe "Stream Types and Structures" do
@@ -193,27 +200,27 @@ defmodule ExUtcp.StreamingUnitTest do
 
   describe "Transport Streaming Support" do
     test "HTTP transport supports streaming" do
-      assert ExUtcp.Transports.Http.supports_streaming?() == true
+      assert Http.supports_streaming?() == true
     end
 
     test "WebSocket transport supports streaming" do
-      assert ExUtcp.Transports.WebSocket.supports_streaming?() == true
+      assert WebSocket.supports_streaming?() == true
     end
 
     test "GraphQL transport supports streaming" do
-      assert ExUtcp.Transports.Graphql.supports_streaming?() == true
+      assert Graphql.supports_streaming?() == true
     end
 
     test "gRPC transport supports streaming" do
-      assert ExUtcp.Transports.Grpc.supports_streaming?() == true
+      assert Grpc.supports_streaming?() == true
     end
 
     test "MCP transport supports streaming" do
-      assert ExUtcp.Transports.Mcp.supports_streaming?() == true
+      assert Mcp.supports_streaming?() == true
     end
 
     test "CLI transport does not support streaming" do
-      assert ExUtcp.Transports.Cli.supports_streaming?() == false
+      assert Cli.supports_streaming?() == false
     end
   end
 

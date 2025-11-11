@@ -14,7 +14,9 @@ defmodule ExUtcp.Transports.Grpc do
   use ExUtcp.Transports.Behaviour
   use GenServer
 
-  alias ExUtcp.Transports.Grpc.{Pool, Connection, Gnmi}
+  alias ExUtcp.Transports.Grpc.Connection
+  alias ExUtcp.Transports.Grpc.Gnmi
+  alias ExUtcp.Transports.Grpc.Pool
 
   require Logger
 

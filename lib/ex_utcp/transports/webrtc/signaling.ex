@@ -187,10 +187,7 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
     {:noreply, state}
   end
 
-  defp handle_signaling_message(
-         %{"type" => "ice_candidate", "candidate" => candidate_data},
-         state
-       ) do
+  defp handle_signaling_message(%{"type" => "ice_candidate", "candidate" => candidate_data}, state) do
     # Forward ICE candidate to parent
     candidate = %{
       candidate: candidate_data["candidate"],
@@ -214,7 +211,7 @@ defmodule ExUtcp.Transports.WebRTC.Signaling do
       # For now, we'll simulate success
     else
       case Jason.encode(message) do
-        {:ok, json} ->
+        {:ok, _json} ->
           :ok
 
         {:error, reason} ->

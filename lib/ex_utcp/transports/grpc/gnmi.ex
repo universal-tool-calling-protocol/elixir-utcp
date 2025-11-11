@@ -6,6 +6,8 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
   using the gNMI protocol over gRPC.
   """
 
+  alias ExUtcp.Transports.Grpc.Connection
+
   require Logger
 
   @doc """
@@ -162,13 +164,13 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
     # In a real implementation, this would use a dedicated gNMI service
     case operation do
       :get ->
-        ExUtcp.Transports.Grpc.Connection.call_tool(connection_pid, "gnmi.get", request, timeout)
+        Connection.call_tool(connection_pid, "gnmi.get", request, timeout)
 
       :set ->
-        ExUtcp.Transports.Grpc.Connection.call_tool(connection_pid, "gnmi.set", request, timeout)
+        Connection.call_tool(connection_pid, "gnmi.set", request, timeout)
 
       :subscribe ->
-        ExUtcp.Transports.Grpc.Connection.call_tool_stream(
+        Connection.call_tool_stream(
           connection_pid,
           "gnmi.subscribe",
           request,
@@ -176,7 +178,7 @@ defmodule ExUtcp.Transports.Grpc.Gnmi do
         )
 
       :capabilities ->
-        ExUtcp.Transports.Grpc.Connection.call_tool(
+        Connection.call_tool(
           connection_pid,
           "gnmi.capabilities",
           request,

@@ -5,7 +5,15 @@ defmodule ExUtcp.StreamingTest do
 
   use ExUnit.Case, async: false
 
-  alias ExUtcp.{Client, Providers}
+  alias ExUtcp.Client
+  alias ExUtcp.Providers
+  alias ExUtcp.Transports.Cli
+  alias ExUtcp.Transports.Graphql
+  alias ExUtcp.Transports.Grpc
+  alias ExUtcp.Transports.Http
+  alias ExUtcp.Transports.Mcp
+  alias ExUtcp.Transports.TcpUdp
+  alias ExUtcp.Transports.WebSocket
 
   @moduletag :integration
 
@@ -18,11 +26,11 @@ defmodule ExUtcp.StreamingTest do
     {:ok, client} = Client.start_link(config)
 
     # Start all transport processes
-    {:ok, _} = ExUtcp.Transports.WebSocket.start_link()
-    {:ok, _} = ExUtcp.Transports.Grpc.start_link()
-    {:ok, _} = ExUtcp.Transports.Graphql.start_link()
-    {:ok, _} = ExUtcp.Transports.Mcp.start_link()
-    {:ok, _} = ExUtcp.Transports.TcpUdp.start_link()
+    {:ok, _} = WebSocket.start_link()
+    {:ok, _} = Grpc.start_link()
+    {:ok, _} = Graphql.start_link()
+    {:ok, _} = Mcp.start_link()
+    {:ok, _} = TcpUdp.start_link()
 
     %{client: client}
   end
@@ -133,7 +141,7 @@ defmodule ExUtcp.StreamingTest do
         Providers.new_grpc_provider(
           name: "test_grpc",
           host: "localhost",
-          port: 50051,
+          port: 50_051,
           service_name: "TestService",
           method_name: "StreamData"
         )
@@ -338,27 +346,27 @@ defmodule ExUtcp.StreamingTest do
 
   describe "Transport Streaming Support" do
     test "HTTP transport supports streaming" do
-      assert ExUtcp.Transports.Http.supports_streaming?() == true
+      assert Http.supports_streaming?() == true
     end
 
     test "WebSocket transport supports streaming" do
-      assert ExUtcp.Transports.WebSocket.supports_streaming?() == true
+      assert WebSocket.supports_streaming?() == true
     end
 
     test "GraphQL transport supports streaming" do
-      assert ExUtcp.Transports.Graphql.supports_streaming?() == true
+      assert Graphql.supports_streaming?() == true
     end
 
     test "gRPC transport supports streaming" do
-      assert ExUtcp.Transports.Grpc.supports_streaming?() == true
+      assert Grpc.supports_streaming?() == true
     end
 
     test "MCP transport supports streaming" do
-      assert ExUtcp.Transports.Mcp.supports_streaming?() == true
+      assert Mcp.supports_streaming?() == true
     end
 
     test "CLI transport does not support streaming" do
-      assert ExUtcp.Transports.Cli.supports_streaming?() == false
+      assert Cli.supports_streaming?() == false
     end
   end
 end

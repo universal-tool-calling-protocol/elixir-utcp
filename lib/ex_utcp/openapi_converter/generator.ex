@@ -3,8 +3,8 @@ defmodule ExUtcp.OpenApiConverter.Generator do
   Generates UTCP tools from parsed OpenAPI specifications.
   """
 
+  alias ExUtcp.OpenApiConverter.AuthMapper
   alias ExUtcp.OpenApiConverter.Types, as: T
-  alias ExUtcp.OpenApiConverter.{AuthMapper}
 
   @doc """
   Generates UTCP tools from a parsed OpenAPI specification.

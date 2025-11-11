@@ -1,0 +1,28 @@
+# Sobelow Configuration
+# https://github.com/nccgroup/sobelow
+
+[
+  verbose: true,
+  private: false,
+  skip: false,
+  router: "",
+  exit: "low",
+  format: "txt",
+  out: "",
+  threshold: "low",
+  ignore: [
+    # Directory Traversal - Mitigated with path validation
+    "Traversal.FileModule:lib/ex_utcp/client.ex:252",
+    "Traversal.FileModule:lib/ex_utcp/openapi_converter.ex:106",
+    
+    # Command Injection - Mitigated with command path validation
+    "CI.System:lib/ex_utcp/transports/cli.ex:96",
+    "CI.System:lib/ex_utcp/transports/cli.ex:132",
+    
+    # String.to_atom DOS - Mitigated with safe_string_to_atom using String.to_existing_atom
+    "DOS.StringToAtom:lib/ex_utcp/transports/websocket.ex:274",
+    "DOS.StringToAtom:lib/ex_utcp/transports/websocket/testable.ex:317"
+  ],
+  ignore_files: []
+]
+

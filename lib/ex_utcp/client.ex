@@ -8,9 +8,14 @@ defmodule ExUtcp.Client do
 
   use GenServer
 
+  alias ExUtcp.Config
   alias ExUtcp.Monitoring.Performance
+  alias ExUtcp.OpenApiConverter
+  alias ExUtcp.Providers
+  alias ExUtcp.Repository
+  alias ExUtcp.Search.Engine, as: SearchEngine
+  alias ExUtcp.Tools
   alias ExUtcp.Types, as: T
-  alias ExUtcp.{Config, Repository, Tools, Providers, OpenApiConverter}
 
   defstruct [
     :config,
@@ -219,6 +224,111 @@ defmodule ExUtcp.Client do
     {:reply, stats, state}
   end
 
+  @impl GenServer
+  def handle_call(:get_monitoring_metrics, _from, state) do
+    metrics = ExUtcp.Monitoring.get_metrics()
+    {:reply, metrics, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_health_status, _from, state) do
+    health_status = ExUtcp.Monitoring.get_health_status()
+    {:reply, health_status, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_performance_summary, _from, state) do
+    performance_summary = Performance.get_performance_summary()
+    {:reply, performance_summary, state}
+  end
+
+  @impl GenServer
+  def handle_call({:convert_openapi, spec, opts}, _from, state) do
+    case convert_openapi_impl(spec, opts) do
+      {:ok, tools} ->
+        # Register all tools
+        {results, new_repo} =
+          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
+            case Repository.add_tool(repo, tool) do
+              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
+              {:error, reason} -> {[{:error, reason} | acc_results], repo}
+            end
+          end)
+
+        # Check if any registration failed
+        case Enum.find(results, &match?({:error, _}, &1)) do
+          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
+          error -> {:reply, error, state}
+        end
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:convert_multiple_openapi, specs, opts}, _from, state) do
+    case convert_multiple_openapi_impl(specs, opts) do
+      {:ok, tools} ->
+        # Register all tools
+        {results, new_repo} =
+          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
+            case Repository.add_tool(repo, tool) do
+              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
+              {:error, reason} -> {[{:error, reason} | acc_results], repo}
+            end
+          end)
+
+        # Check if any registration failed
+        case Enum.find(results, &match?({:error, _}, &1)) do
+          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
+          error -> {:reply, error, state}
+        end
+
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  @impl GenServer
+  def handle_call({:validate_openapi, spec}, _from, state) do
+    result = OpenApiConverter.validate(spec)
+    {:reply, result, state}
+  end
+
+  @impl GenServer
+  def handle_call({:search_providers, query, opts}, _from, state) do
+    # Create search engine from current repository state
+    search_engine = create_search_engine_from_state(state)
+
+    results = ExUtcp.Search.search_providers(search_engine, query, opts)
+    {:reply, results, state}
+  end
+
+  @impl GenServer
+  def handle_call({:get_search_suggestions, partial_query, opts}, _from, state) do
+    # Create search engine from current repository state
+    search_engine = create_search_engine_from_state(state)
+
+    suggestions = ExUtcp.Search.get_suggestions(search_engine, partial_query, opts)
+    {:reply, suggestions, state}
+  end
+
+  @impl GenServer
+  def handle_call({:find_similar_tools, tool_name, opts}, _from, state) do
+    case Repository.get_tool(state.repository, tool_name) do
+      {:ok, tool} ->
+        # Create search engine from current repository state
+        search_engine = create_search_engine_from_state(state)
+
+        similar_tools = ExUtcp.Search.suggest_similar_tools(search_engine, tool, opts)
+        {:reply, similar_tools, state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
   # Private functions
 
   defp default_transports do
@@ -242,15 +352,37 @@ defmodule ExUtcp.Client do
   end
 
   defp load_providers_from_file(state, file_path) do
-    case File.read(file_path) do
-      {:ok, content} ->
-        case Jason.decode(content) do
-          {:ok, data} -> parse_and_register_providers(state, data)
-          {:error, reason} -> {:error, "Failed to parse JSON: #{reason}"}
-        end
+    # Validate file path to prevent directory traversal
+    with {:ok, validated_path} <- validate_file_path(file_path),
+         {:ok, content} <- File.read(validated_path),
+         {:ok, data} <- Jason.decode(content) do
+      parse_and_register_providers(state, data)
+    else
+      {:error, :invalid_path} -> {:error, "Invalid file path"}
+      {:error, %Jason.DecodeError{} = reason} -> {:error, "Failed to parse JSON: #{inspect(reason)}"}
+      {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
+    end
+  end
 
-      {:error, reason} ->
-        {:error, "Failed to read file: #{reason}"}
+  defp validate_file_path(file_path) do
+    # Resolve to absolute path and check for directory traversal
+    abs_path = Path.expand(file_path)
+
+    # Check if path contains directory traversal patterns
+    cond do
+      String.contains?(file_path, ["../", "..\\"]) ->
+        {:error, :invalid_path}
+
+      # Ensure the path doesn't escape the current working directory
+      String.contains?(abs_path, "..") ->
+        {:error, :invalid_path}
+
+      # Check if file exists and is readable
+      not File.exists?(abs_path) ->
+        {:error, :file_not_found}
+
+      true ->
+        {:ok, abs_path}
     end
   end
 
@@ -453,68 +585,53 @@ defmodule ExUtcp.Client do
   end
 
   defp call_tool_impl(state, tool_name, args) do
-    case Repository.get_tool(state.repository, tool_name) do
-      nil ->
-        {:error, "Tool not found: #{tool_name}"}
+    with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
+         provider_name = Tools.extract_provider_name(tool_name),
+         {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
+         {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
+      call_name = extract_call_name(provider.type, tool_name)
+      _transport = transport_module.new()
+      transport_module.call_tool(call_name, args, provider)
+    end
+  end
 
-      _tool ->
-        provider_name = Tools.extract_provider_name(tool_name)
+  defp get_tool_or_error(repository, tool_name) do
+    case Repository.get_tool(repository, tool_name) do
+      nil -> {:error, "Tool not found: #{tool_name}"}
+      tool -> {:ok, tool}
+    end
+  end
 
-        case Repository.get_provider(state.repository, provider_name) do
-          nil ->
-            {:error, "Provider not found: #{provider_name}"}
+  defp get_provider_or_error(repository, provider_name) do
+    case Repository.get_provider(repository, provider_name) do
+      nil -> {:error, "Provider not found: #{provider_name}"}
+      provider -> {:ok, provider}
+    end
+  end
 
-          provider ->
-            transport_module = Map.get(state.transports, to_string(provider.type))
+  defp get_transport_or_error(transports, provider_type) do
+    case Map.get(transports, to_string(provider_type)) do
+      nil -> {:error, "No transport available for provider type: #{provider_type}"}
+      transport_module -> {:ok, transport_module}
+    end
+  end
 
-            if is_nil(transport_module) do
-              {:error, "No transport available for provider type: #{provider.type}"}
-            else
-              _transport = transport_module.new()
-
-              call_name =
-                if provider.type in [:mcp, :text] do
-                  Tools.extract_tool_name(tool_name)
-                else
-                  tool_name
-                end
-
-              transport_module.call_tool(call_name, args, provider)
-            end
-        end
+  defp extract_call_name(provider_type, tool_name) do
+    if provider_type in [:mcp, :text] do
+      Tools.extract_tool_name(tool_name)
+    else
+      tool_name
     end
   end
 
   defp call_tool_stream_impl(state, tool_name, args) do
-    case Repository.get_tool(state.repository, tool_name) do
-      nil ->
-        {:error, "Tool not found: #{tool_name}"}
-
-      _tool ->
-        provider_name = Tools.extract_provider_name(tool_name)
-
-        case Repository.get_provider(state.repository, provider_name) do
-          nil ->
-            {:error, "Provider not found: #{provider_name}"}
-
-          provider ->
-            transport_module = Map.get(state.transports, to_string(provider.type))
-
-            if is_nil(transport_module) do
-              {:error, "No transport available for provider type: #{provider.type}"}
-            else
-              _transport = transport_module.new()
-
-              call_name =
-                if provider.type in [:mcp, :text] do
-                  Tools.extract_tool_name(tool_name)
-                else
-                  tool_name
-                end
-
-              transport_module.call_tool_stream(call_name, args, provider)
-            end
-        end
+    with {:ok, _tool} <- get_tool_or_error(state.repository, tool_name),
+         provider_name = Tools.extract_provider_name(tool_name),
+         {:ok, provider} <- get_provider_or_error(state.repository, provider_name),
+         {:ok, transport_module} <- get_transport_or_error(state.transports, provider.type) do
+      call_name = extract_call_name(provider.type, tool_name)
+      _transport = transport_module.new()
+      transport_module.call_tool_stream(call_name, args, provider)
     end
   end
 
@@ -673,122 +790,18 @@ defmodule ExUtcp.Client do
     GenServer.call(client, :get_performance_summary)
   end
 
-  # GenServer callbacks
-
-  def handle_call({:convert_openapi, spec, opts}, _from, state) do
-    case convert_openapi_impl(spec, opts) do
-      {:ok, tools} ->
-        # Register all tools
-        {results, new_repo} =
-          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
-            case Repository.add_tool(repo, tool) do
-              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
-              {:error, reason} -> {[{:error, reason} | acc_results], repo}
-            end
-          end)
-
-        # Check if any registration failed
-        case Enum.find(results, &match?({:error, _}, &1)) do
-          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
-          error -> {:reply, error, state}
-        end
-
-      error ->
-        {:reply, error, state}
-    end
-  end
-
-  def handle_call({:convert_multiple_openapi, specs, opts}, _from, state) do
-    case convert_multiple_openapi_impl(specs, opts) do
-      {:ok, tools} ->
-        # Register all tools
-        {results, new_repo} =
-          Enum.reduce(tools, {[], state.repository}, fn tool, {acc_results, repo} ->
-            case Repository.add_tool(repo, tool) do
-              {:ok, new_repo} -> {[{:ok, tool} | acc_results], new_repo}
-              {:error, reason} -> {[{:error, reason} | acc_results], repo}
-            end
-          end)
-
-        # Check if any registration failed
-        case Enum.find(results, &match?({:error, _}, &1)) do
-          nil -> {:reply, {:ok, tools}, %{state | repository: new_repo}}
-          error -> {:reply, error, state}
-        end
-
-      error ->
-        {:reply, error, state}
-    end
-  end
-
-  def handle_call({:validate_openapi, spec}, _from, state) do
-    result = OpenApiConverter.validate(spec)
-    {:reply, result, state}
-  end
-
-  @impl GenServer
-  def handle_call({:search_providers, query, opts}, _from, state) do
-    # Create search engine from current repository state
-    search_engine = create_search_engine_from_state(state)
-
-    results = ExUtcp.Search.search_providers(search_engine, query, opts)
-    {:reply, results, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_search_suggestions, partial_query, opts}, _from, state) do
-    # Create search engine from current repository state
-    search_engine = create_search_engine_from_state(state)
-
-    suggestions = ExUtcp.Search.get_suggestions(search_engine, partial_query, opts)
-    {:reply, suggestions, state}
-  end
-
-  @impl GenServer
-  def handle_call({:find_similar_tools, tool_name, opts}, _from, state) do
-    case Repository.get_tool(state.repository, tool_name) do
-      {:ok, tool} ->
-        # Create search engine from current repository state
-        search_engine = create_search_engine_from_state(state)
-
-        similar_tools = ExUtcp.Search.suggest_similar_tools(search_engine, tool, opts)
-        {:reply, similar_tools, state}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call(:get_monitoring_metrics, _from, state) do
-    metrics = ExUtcp.Monitoring.get_metrics()
-    {:reply, metrics, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_health_status, _from, state) do
-    health_status = ExUtcp.Monitoring.get_health_status()
-    {:reply, health_status, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_performance_summary, _from, state) do
-    performance_summary = Performance.get_performance_summary()
-    {:reply, performance_summary, state}
-  end
-
   # Private functions
 
   defp create_search_engine_from_state(state) do
     # Create a search engine and populate it with current tools and providers
-    search_engine = ExUtcp.Search.Engine.new()
+    search_engine = SearchEngine.new()
 
     # Add all tools from repository
     tools = Repository.get_tools(state.repository)
 
     search_engine =
       Enum.reduce(tools, search_engine, fn tool, acc ->
-        ExUtcp.Search.Engine.add_tool(acc, tool)
+        SearchEngine.add_tool(acc, tool)
       end)
 
     # Add all providers from repository
@@ -796,7 +809,7 @@ defmodule ExUtcp.Client do
 
     search_engine =
       Enum.reduce(providers, search_engine, fn provider, acc ->
-        ExUtcp.Search.Engine.add_provider(acc, provider)
+        SearchEngine.add_provider(acc, provider)
       end)
 
     search_engine

@@ -270,7 +270,8 @@ defmodule ExUtcp.Transports.WebSocket do
       end
 
     # Convert headers to the format expected by websockex
-    ws_headers = Enum.map(headers, fn {k, v} -> {String.to_atom(k), v} end)
+    # Use existing atoms only to prevent DOS attacks
+    ws_headers = Enum.map(headers, fn {k, v} -> {safe_string_to_atom(k), v} end)
 
     opts = [
       extra_headers: ws_headers,
@@ -486,5 +487,19 @@ defmodule ExUtcp.Transports.WebSocket do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # Safe conversion to atom - only converts if atom already exists
+  # Falls back to string if atom doesn't exist to prevent atom table exhaustion
+  defp safe_string_to_atom(string) do
+    String.to_existing_atom(string)
+  rescue
+    ArgumentError ->
+      # Try lowercase version
+      try do
+        String.to_existing_atom(String.downcase(string))
+      rescue
+        ArgumentError -> string
+      end
   end
 end

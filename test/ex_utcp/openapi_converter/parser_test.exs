@@ -2,7 +2,6 @@ defmodule ExUtcp.OpenApiConverter.ParserTest do
   use ExUnit.Case, async: true
 
   alias ExUtcp.OpenApiConverter.Parser
-  alias ExUtcp.OpenApiConverter.Types, as: T
 
   describe "parse/1" do
     test "parses OpenAPI 2.0 spec" do
