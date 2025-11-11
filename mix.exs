@@ -27,25 +27,25 @@ defmodule ExUtcp.MixProject do
   defp deps do
     [
       # HTTP client
-      {:req, "~> 0.4"},
+      {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
 
       # WebSocket support
       {:websockex, "~> 0.4"},
 
       # gRPC support
-      {:grpc, "~> 0.7"},
-      {:protobuf, "~> 0.12"},
+      {:grpc, "~> 0.11"},
+      {:protobuf, "~> 0.15"},
 
       # GraphQL support
-      {:absinthe, "~> 1.7"},
+      {:absinthe, "~> 1.8"},
       {:absinthe_plug, "~> 1.5"},
 
       # Environment variables
-      {:dotenvy, "~> 0.8"},
+      {:dotenvy, "~> 1.1"},
 
       # YAML support for OpenAPI
-      {:yaml_elixir, "~> 2.9"},
+      {:yaml_elixir, "~> 2.12"},
 
       # Search libraries
       {:fuzzy_compare, "~> 1.1"},
@@ -53,21 +53,21 @@ defmodule ExUtcp.MixProject do
       {:haystack, "~> 0.1"},
 
       # Monitoring and metrics
-      {:telemetry, "~> 1.2"},
-      {:prom_ex, "~> 1.9"},
-      {:telemetry_metrics, "~> 0.6"},
-      {:telemetry_poller, "~> 1.0"},
+      {:telemetry, "~> 1.3"},
+      {:prom_ex, "~> 1.11"},
+      {:telemetry_metrics, "~> 1.1"},
+      {:telemetry_poller, "~> 1.3"},
 
       # WebRTC support
       {:ex_webrtc, "~> 0.15"},
 
       # Testing
-      {:ex_doc, "~> 0.30", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.39", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:quokka, "~> 2.11", only: [:dev, :test], runtime: false},
-      {:mox, "~> 1.0", only: :test},
+      {:mox, "~> 1.2", only: :test},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
-      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
+      {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false}
     ]
   end
 

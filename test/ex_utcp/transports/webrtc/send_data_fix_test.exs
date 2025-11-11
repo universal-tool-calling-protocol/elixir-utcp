@@ -250,7 +250,7 @@ defmodule ExUtcp.Transports.WebRTC.SendDataFixTest do
       data_channel = :mock_channel
 
       # Verify data channel is not nil
-      assert not is_nil(data_channel)
+      refute is_nil(data_channel)
     end
   end
 end

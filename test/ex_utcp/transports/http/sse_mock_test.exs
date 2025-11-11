@@ -55,11 +55,12 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
 
     test "handles timeout when no messages arrive" do
       # Don't send any messages
-      result = receive do
-        {:data, _} -> :received_data
-      after
-        100 -> :timeout
-      end
+      result =
+        receive do
+          {:data, _} -> :received_data
+        after
+          100 -> :timeout
+        end
 
       assert result == :timeout
     end
@@ -71,17 +72,19 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
         for i <- 1..5 do
           send(parent, {:data, "data: {\"seq\": #{i}}\n\n"})
         end
+
         send(parent, {:done, make_ref()})
       end)
 
       # Collect all chunks
-      chunks = for _i <- 1..5 do
-        receive do
-          {:data, data} -> data
-        after
-          1_000 -> nil
+      chunks =
+        for _i <- 1..5 do
+          receive do
+            {:data, data} -> data
+          after
+            1_000 -> nil
+          end
         end
-      end
 
       # Verify we got all chunks
       assert length(Enum.reject(chunks, &is_nil/1)) == 5
@@ -101,7 +104,7 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
     end
 
     test "extracts JSON from SSE data line" do
-      line = "data: {\"message\": \"hello\", \"count\": 42}"
+      line = ~s(data: {"message": "hello", "count": 42})
 
       # Extract the part after "data: "
       json_part = String.replace_prefix(line, "data: ", "")
@@ -148,11 +151,12 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
 
     test "handles network timeouts" do
       # Simulate timeout scenario
-      result = receive do
-        {:data, _} -> :data_received
-      after
-        50 -> :timeout_occurred
-      end
+      result =
+        receive do
+          {:data, _} -> :data_received
+        after
+          50 -> :timeout_occurred
+        end
 
       assert result == :timeout_occurred
     end
@@ -172,9 +176,26 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
       end)
 
       # Collect chunks with timeout
-      chunk1 = receive do {:data, d} -> d after 1_000 -> nil end
-      chunk2 = receive do {:data, d} -> d after 1_000 -> nil end
-      chunk3 = receive do {:data, d} -> d after 1_000 -> nil end
+      chunk1 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
+
+      chunk2 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
+
+      chunk3 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
 
       assert chunk1 != nil
       assert chunk2 != nil
@@ -191,13 +212,14 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
       end)
 
       # Receive in order
-      received = for _i <- 1..10 do
-        receive do
-          {:data, data} -> data
-        after
-          1_000 -> nil
+      received =
+        for _i <- 1..10 do
+          receive do
+            {:data, data} -> data
+          after
+            1_000 -> nil
+          end
         end
-      end
 
       # All should be received
       assert Enum.all?(received, &(!is_nil(&1)))
@@ -239,11 +261,12 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
 
     test "stream terminates after timeout" do
       # No messages sent
-      result = receive do
-        {:data, _} -> :got_data
-      after
-        100 -> :timed_out
-      end
+      result =
+        receive do
+          {:data, _} -> :got_data
+        after
+          100 -> :timed_out
+        end
 
       assert result == :timed_out
     end
@@ -255,7 +278,7 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
 
       spawn(fn ->
         # Send initial data
-        send(parent, {:data, "data: {\"status\": \"starting\"}\n\n"})
+        send(parent, {:data, ~s(data: {"status": "starting"}\n\n)})
         Process.sleep(10)
 
         # Send progress updates
@@ -265,19 +288,20 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
         Process.sleep(10)
 
         # Send completion
-        send(parent, {:data, "data: {\"status\": \"complete\"}\n\n"})
+        send(parent, {:data, ~s(data: {"status": "complete"}\n\n)})
         send(parent, {:data, "data: [DONE]\n\n"})
         send(parent, {:done, make_ref()})
       end)
 
       # Collect all messages
-      messages = for _i <- 1..5 do
-        receive do
-          {:data, data} -> data
-        after
-          1_000 -> nil
+      messages =
+        for _i <- 1..5 do
+          receive do
+            {:data, data} -> data
+          after
+            1_000 -> nil
+          end
         end
-      end
 
       # Verify we got messages
       valid_messages = Enum.reject(messages, &is_nil/1)
@@ -293,14 +317,31 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
       spawn(fn ->
         send(parent, {:data, "event: message\n"})
         send(parent, {:data, "id: 1\n"})
-        send(parent, {:data, "data: {\"actual\": \"data\"}\n\n"})
+        send(parent, {:data, ~s(data: {"actual": "data"}\n\n)})
         send(parent, {:done, make_ref()})
       end)
 
       # Collect all data messages
-      msg1 = receive do {:data, d} -> d after 1_000 -> nil end
-      msg2 = receive do {:data, d} -> d after 1_000 -> nil end
-      msg3 = receive do {:data, d} -> d after 1_000 -> nil end
+      msg1 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
+
+      msg2 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
+
+      msg3 =
+        receive do
+          {:data, d} -> d
+        after
+          1_000 -> nil
+        end
 
       # Should receive all parts
       assert msg1 != nil
@@ -319,6 +360,7 @@ defmodule ExUtcp.Transports.Http.SseMockTest do
         Enum.each(1..100, fn i ->
           send(parent, {:data, "data: {\"burst\": #{i}}\n\n"})
         end)
+
         send(parent, {:done, make_ref()})
       end)
 
