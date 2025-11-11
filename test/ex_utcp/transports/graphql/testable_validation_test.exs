@@ -289,24 +289,33 @@ defmodule ExUtcp.Transports.Graphql.TestableValidationTest do
       # Test all branches of get_connection logic
 
       # Branch 1: nil module
-      assert match?({:error, _}, case nil do
-        nil -> {:error, "error"}
-        _ -> {:ok, :ok}
-      end)
+      assert match?(
+               {:error, _},
+               case nil do
+                 nil -> {:error, "error"}
+                 _ -> {:ok, :ok}
+               end
+             )
 
       # Branch 2: MockConnection
-      assert match?({:ok, _}, case MockConnection do
-        nil -> {:error, "error"}
-        MockConnection -> {:ok, :mock}
-        _ -> {:ok, :other}
-      end)
+      assert match?(
+               {:ok, _},
+               case MockConnection do
+                 nil -> {:error, "error"}
+                 MockConnection -> {:ok, :mock}
+                 _ -> {:ok, :other}
+               end
+             )
 
       # Branch 3: Other module
-      assert match?({:ok, _}, case GenServer do
-        nil -> {:error, "error"}
-        MockConnection -> {:ok, :mock}
-        _ -> {:ok, :other}
-      end)
+      assert match?(
+               {:ok, _},
+               case GenServer do
+                 nil -> {:error, "error"}
+                 MockConnection -> {:ok, :mock}
+                 _ -> {:ok, :other}
+               end
+             )
     end
   end
 end

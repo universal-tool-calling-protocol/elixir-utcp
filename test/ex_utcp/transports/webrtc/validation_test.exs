@@ -150,11 +150,12 @@ defmodule ExUtcp.Transports.WebRTC.ValidationTest do
         )
 
       # Mix valid maps with invalid elements
-      provider = Map.put(provider, :tools, [
-        %{name: "valid_tool"},
-        "invalid_string",
-        %{name: "another_valid"}
-      ])
+      provider =
+        Map.put(provider, :tools, [
+          %{name: "valid_tool"},
+          "invalid_string",
+          %{name: "another_valid"}
+        ])
 
       {:ok, transport} = WebRTC.start_link()
 

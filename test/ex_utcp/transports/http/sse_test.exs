@@ -34,7 +34,7 @@ defmodule ExUtcp.Transports.Http.SseTest do
 
     test "handles SSE event types" do
       # Test different SSE line types
-      data_line = "data: {\"test\": \"value\"}"
+      data_line = ~s(data: {"test": "value"})
       event_line = "event: message"
       id_line = "id: 123"
       retry_line = "retry: 1000"
@@ -127,7 +127,7 @@ defmodule ExUtcp.Transports.Http.SseTest do
       partial = "data: {\"incomplete\""
 
       # Should be kept in buffer until complete
-      assert not String.ends_with?(partial, "\n")
+      refute String.ends_with?(partial, "\n")
     end
 
     test "clears buffer after processing complete messages" do
@@ -182,7 +182,7 @@ defmodule ExUtcp.Transports.Http.SseTest do
 
   describe "SSE Data Parsing" do
     test "parses simple data line" do
-      line = "data: {\"message\": \"hello\"}"
+      line = ~s(data: {"message": "hello"})
 
       assert String.starts_with?(line, "data:")
       data_part = String.replace_prefix(line, "data: ", "")
@@ -257,13 +257,15 @@ defmodule ExUtcp.Transports.Http.SseTest do
     end
 
     test "extracts complete messages from buffer" do
-      buffer = "data: {\"msg1\": 1}\n\ndata: {\"msg2\": 2}\n\ndata: incomplete"
+      buffer = ~s(data: {"msg1": 1}\n\ndata: {"msg2": 2}\n\ndata: incomplete)
 
       # Should extract 2 complete messages
       lines = String.split(buffer, "\n\n", trim: false)
-      complete_messages = Enum.filter(lines, fn line ->
-        String.starts_with?(line, "data:") and String.ends_with?(line, "}")
-      end)
+
+      complete_messages =
+        Enum.filter(lines, fn line ->
+          String.starts_with?(line, "data:") and String.ends_with?(line, "}")
+        end)
 
       assert length(complete_messages) >= 2
     end
